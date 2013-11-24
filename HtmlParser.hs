@@ -1,7 +1,6 @@
 module HtmlParser where
 
-notWhiteSpace :: Char -> Bool
-notWhiteSpace x = not(x == ' ' || x == '\t' || x == '\r' || x == '\n')
+import StringUtils
 
 notOpenTag :: Char -> Bool
 notOpenTag x = x /= '<'
@@ -14,36 +13,41 @@ startingTagName [] = ""
 startingTagName ('<':xs) = takeWhile notWhiteSpace $ takeWhile notCloseTag xs
 startingTagName (_:_) = ""
 
-stringFrom :: String -> String -> String
-stringFrom _ [] = ""
-stringFrom substring (x:xs) | startsWith substring (x:xs) = (x:xs)
-                            | xs == [] = ""
-                            | otherwise = stringFrom substring xs
-
-stringTo :: String -> String -> String
-stringTo _ [] = ""
-stringTo substring str = doStringTo "" substring str
-
-doStringTo :: String -> String -> String -> String
-doStringTo builder substring (x:xs) | startsWith substring (x:xs) = builder
-                                    | xs == [] = builder ++ [x]
-                                    | otherwise = doStringTo (builder ++ [x]) substring xs
-
-startsWith :: String -> String -> Bool
-startsWith _ [] = False
-startsWith [] _ = True
-startsWith substring str = take (length substring) str == substring
-
-splitString :: String -> String -> (String, String)
-splitString _ [] = ("", "")
-splitString substring str = doSplitString "" substring str
-
-doSplitString :: String -> String -> String -> (String, String)
-doSplitString before substring (x:xs) | startsWith substring (x:xs) = (before, x:xs)
-                                      | otherwise = doSplitString (before ++ [x]) substring xs
-
 extractNode :: String -> String
 extractNode str = magic 0 (startingTagName str) str
 
+grabDiv :: String -> (String, String)
+grabDiv = doGrabDiv 0 ""
+
+grabTag :: String -> String -> (String, String)
+grabTag tagName = doGrabTag tagName 0 ""
+
+doGrabTag :: String -> Int -> String -> String -> (String, String)
+doGrabTag tagName depth grabbed str | depth == 1 && (startsWith closeTag str) = (grabbed ++ closeTag, drop (length closeTag) str)
+                                    | startsWith closeTag str                 = doGrabTag tagName (depth - 1) newGrabbed rest
+                                    | startsWith openTag str                  = doGrabTag tagName (depth + 1) newGrabbed rest
+                                    | otherwise                               = doGrabTag tagName depth       newGrabbed rest
+    where closeTag   = "</" ++ tagName ++ ">"
+          openTag    = "<" ++ tagName
+          newGrabbed = grabbed ++ [head str]
+          rest       = tail str
+
+doGrabDiv :: Int -> String -> String -> (String, String)
+doGrabDiv depth grabbed (x:xs) | depth == 1 && (startsWith "</div>" (x:xs)) = (grabbed ++ "</div>", drop 5 xs)
+                               | startsWith "</div>" (x:xs) = doGrabDiv (depth - 1) (grabbed ++ "<") xs
+                               | startsWith "<div" (x:xs) = doGrabDiv (depth + 1) (grabbed ++ "<") xs
+                               | otherwise = doGrabDiv depth (grabbed ++ [x]) xs
+
+
+toNextTag str = dropWhile notOpenTag str
+
+
+
+
+
 magic :: Int -> String -> String -> String
-magic depth tagName string = "hello"
+magic depth tagName str | startingTagName nextTag == '/':tagName = stringTo ("</" ++ tagName ++ ">") str
+                        | otherwise = magic (depth + 1) (startingTagName nextTag) nextTag
+    where nextTag = toNextTag str
+
+
