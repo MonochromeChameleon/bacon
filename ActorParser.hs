@@ -3,16 +3,18 @@ module ActorParser(getFilmographyDetails) where
 import Text.HTML.TagSoup
 import Data.List
 
+import DataModel
 import StringUtils
 
 -- Only one public method: getFilmographyDetails, which parses an html page into a list of (film name, url) tuples
 
-getFilmographyDetails :: String -> [(String, String)]
+getFilmographyDetails :: String -> [(Name, ImdbID)]
 getFilmographyDetails html = filmDetails
     where tags        = parseTags html          -- TagSoup parsing
           filmography = filmographyTags tags    -- Get rid of anything that isn't the acting filmography section (i.e. not director, soundtrack etc.)
           rows        = groupByRows filmography -- Group the filmography into rows
-          filmDetails = map parseRow rows       -- Parse our rows into the necessary details
+          filmRows    = filter notTV rows       -- Remove TV Shows (they have big casts and it just gets too huge!)
+          filmDetails = map parseRow filmRows   -- Parse our rows into the necessary details
 
           
 -- Private methods
@@ -46,11 +48,12 @@ doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
 
 
 
-parseRow :: [Tag String] -> (String, String)
-parseRow tags = (filmName, url)
+parseRow :: [Tag String] -> (Name, ImdbID)
+parseRow tags = (filmName, imdbId)
     where tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
           url = getLink $ tagsOfInterest!!0         -- URL comes first
           filmName = getContent $ tagsOfInterest!!1 -- Name of the film is the text node inside the <a>tag
+          imdbId = takeWhile (\x -> x /= '/') $ drop 7 url
 
 getLink :: Tag String -> String
 getLink (TagOpen "a" atts) = snd $ (filter (\x -> fst x == "href") atts)!!0 -- Get the content of the href attribute
@@ -86,3 +89,6 @@ notLink _ = True
 notRow :: Tag String -> Bool
 notRow (TagOpen tag atts) = length (filter (\x -> fst x == "class" && (startsWith "filmo-row" $ snd x)) atts) == 0
 notRow _ = True
+
+notTV :: [Tag String] -> Bool
+notTV tags = True --QQ

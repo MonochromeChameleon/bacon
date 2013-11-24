@@ -1,9 +1,6 @@
-import Control.Monad
-import System.IO
-
-import ActorParser
+import Spider
 
 main :: IO()
 main = do
-    kevin <-readFile "kevin.txt"
+    crawlActor 0 2 "http://www.imdb.com/name/nm0000102/"
     return ()
