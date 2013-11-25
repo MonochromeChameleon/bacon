@@ -27,7 +27,7 @@ search), and then we are interested in the next <div class="filmo-category-secti
 - Then keep all tags up until the next with id beginning "filmo-head"  -}
 
 castTags :: [Tag String] -> [Tag String]
-castTags tags = rowTags
+castTags tags = rowTags --QQ This might be the error
     where tagsFromCastOnwards = dropWhile notCast tags                -- Find the start of the cast table
           castTags = takeWhile notEndTable $ tail tagsFromCastOnwards -- Drop the tail from the content of interest
           rowTags = dropWhile notRow castTags                         -- Cleanup so that we start on a row

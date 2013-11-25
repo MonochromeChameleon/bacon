@@ -1,4 +1,4 @@
-module ActorParser(getFilmographyDetails) where
+module ActorParser where --(getFilmographyDetails) where
 
 import Text.HTML.TagSoup
 import Data.List
@@ -30,7 +30,7 @@ filmographyTags :: [Tag String] -> [Tag String]
 filmographyTags tags = rowTags
     where tagsFromHeaderOnwards = dropWhile notActorHeader tags                   -- Find the appropriate header
           tagsFromFilmographyOnwards = dropWhile notSection tagsFromHeaderOnwards -- Find the corresponding content section
-          filmographyTags = takeWhile notHeader $ tail tagsFromFilmographyOnwards -- Drop the tail from the content of interest
+          filmographyTags = takeWhile notHeader $ dropWhile (not.notHeader) tagsFromFilmographyOnwards -- Get the content between headers
           rowTags = dropWhile notRow filmographyTags                              -- Cleanup so that we start on a row
 
 

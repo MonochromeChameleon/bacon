@@ -7,13 +7,6 @@ import System.IO
 
 import DataModel
 
--- Print out multiple lines to the console
-putLines :: [String] -> IO()
-putLines [] = return ()
-putLines (line:lines) = do
-    putStrLn line
-    putLines lines
-
 createDB :: IO ()
 createDB = do
     schema <- readFile "bacon.sql"     -- Get our DB schema from an external SQL file
@@ -41,17 +34,72 @@ runMany conn (part:parts) = do
     runMany conn parts
     return ()
 
+loadActorsWithBacon :: BaconNumber -> IO [Actor]
+loadActorsWithBacon baconNumber = do
+    conn <- connectSqlite3 "bacon.db"
+    putStrLn $ "Loading actors with bacon level " ++ (show baconNumber)
+    let query = "SELECT * FROM actor WHERE baconNumber = ?"
+    res <- quickQuery' conn query [toSql baconNumber]
+    commit conn
+    
+    return $ map convertSQL res
+    
+loadFilmsWithBacon :: BaconNumber -> IO [Film]
+loadFilmsWithBacon baconNumber = do
+    conn <- connectSqlite3 "bacon.db"
+    putStrLn $ "Loading films with bacon level " ++ (show baconNumber)
+    let query = "SELECT * FROM film WHERE baconNumber = ?"
+    res <- quickQuery' conn query [toSql baconNumber]
+    commit conn
+    
+    return $ map convertSQL res
 
 
-storeFilms :: [Film] -> IO [Film]
-storeFilms films = do
+convertSQL :: [SqlValue] -> ImdbRecord
+convertSQL sqlValues = ImdbRecord {
+    imdbId = fromSql $ sqlValues!!0,
+    name = fromSql $ sqlValues!!1,
+    baconNumber = fromSql $ sqlValues!!2 }
+    
+    
+
+storeFilms :: Actor -> [Film] -> IO [Film]
+storeFilms actor films = do
     conn <- connectSqlite3 "bacon.db"
     putStrLn "Trying to store films"
     newFilms <- filterFilms conn films
-    putStrLn "Filtered films"
     doStoreFilms conn newFilms
-    putStrLn "Stored"
+    putStrLn "Stored films"
+    
+    doStoreActorFilms conn actor newFilms
+    putStrLn "Stored actor-film links"
+    
+    doMarkActorAsProcessed conn actor
+    
+    commit conn
+    
     return newFilms
+    
+doStoreActorFilms :: Connection -> Actor -> [Film] -> IO()
+doStoreActorFilms conn actor films = do
+    stmt <- prepare conn "INSERT INTO actor_film (actor_id, film_id) VALUES (?, ?)"
+    executeMany stmt (map (\x -> [toSql $ imdbId actor, toSql $ imdbId x]) films)
+
+doMarkActorAsProcessed :: Connection -> Actor -> IO()
+doMarkActorAsProcessed conn actor = do
+    stmt <- prepare conn "UPDATE actor SET processed = true WHERE imdbId = ?"
+    execute stmt [toSql $ imdbId actor]
+    
+doMarkFilmAsProcessed :: Connection -> Film -> IO()
+doMarkFilmAsProcessed conn film = do
+    stmt <- prepare conn "UPDATE film SET processed = true WHERE imdbId = ?"
+    execute stmt [toSql $ imdbId film]
+    
+    
+doStoreFilmActors :: Connection -> Film -> [Actor] -> IO()
+doStoreFilmActors conn film actors = do
+    stmt <- prepare conn "INSERT INTO actor_film (actor_id, film_id) VALUES (?, ?)"
+    executeMany stmt (map (\x -> [toSql $ imdbId x, toSql $ imdbId film]) actors)
     
 filterFilms :: Connection -> [Film] -> IO [Film]
 filterFilms conn films = do
@@ -67,16 +115,22 @@ doStoreFilms :: Connection -> [Film] -> IO()
 doStoreFilms conn films = do
     stmt <- prepare conn "INSERT INTO film (imdbId, name, baconNumber) VALUES (?, ?, ?)"
     executeMany stmt (map (\x -> [toSql $ imdbId x, toSql $ name x, toSql $ baconNumber x]) films)
-    commit conn
     
-storeActors :: [Actor] -> IO [Actor]
-storeActors actors = do
+storeActors :: Film -> [Actor] -> IO [Actor]
+storeActors film actors = do
     conn <- connectSqlite3 "bacon.db"
     putStrLn "Trying to store actors"
     newActors <- filterActors conn actors
-    putStrLn "Filtered Actors"
     doStoreActors conn newActors
-    putStrLn "Stored"
+    putStrLn "Stored actors"
+    
+    doStoreFilmActors conn film newActors
+    putStrLn "Stored actor-film links"
+    
+    doMarkFilmAsProcessed conn film
+    
+    commit conn
+    
     return newActors
     
 filterActors :: Connection -> [Actor] -> IO [Actor]
@@ -93,7 +147,6 @@ doStoreActors :: Connection -> [Actor] -> IO()
 doStoreActors conn actors = do
     stmt <- prepare conn "INSERT INTO actor (imdbId, name, baconNumber) VALUES (?, ?, ?)"
     executeMany stmt (map (\x -> [toSql $ imdbId x, toSql $ name x, toSql $ baconNumber x]) actors)
-    commit conn
 
 parametrize :: [SqlValue] -> String
 parametrize values = intercalate "," $ replicate (length values) "?"

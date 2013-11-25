@@ -1,6 +1,10 @@
 import Spider
 
+import DataModel
+
+kevin = ImdbRecord { imdbId = "nm0000102", name = "Kevin Bacon", baconNumber = 0 }
+
 main :: IO()
 main = do
-    crawlActor 0 2 "http://www.imdb.com/name/nm0000102/"
+    crawl 0 1
     return ()
