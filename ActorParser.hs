@@ -13,7 +13,7 @@ getFilmographyDetails html = filmDetails
     where tags        = parseTags html          -- TagSoup parsing
           filmography = filmographyTags tags    -- Get rid of anything that isn't the acting filmography section (i.e. not director, soundtrack etc.)
           rows        = groupByRows filmography -- Group the filmography into rows
-          filmRows    = filter notTVRow rows       -- Remove TV Shows (they have big casts and it just gets too huge!)
+          filmRows    = filter notTVEtcRow rows -- Remove TV Shows and suchlike (they have big casts and it just gets too huge!)
           filmDetails = map parseRow filmRows   -- Parse our rows into the necessary details
 
           
@@ -90,10 +90,10 @@ notRow :: Tag String -> Bool
 notRow (TagOpen tag atts) = length (filter (\x -> fst x == "class" && (startsWith "filmo-row" $ snd x)) atts) == 0
 notRow _ = True
 
-notTVRow :: [Tag String] -> Bool
-notTVRow tags = length (filter isTVTag tags) == 0
+notTVEtcRow :: [Tag String] -> Bool
+notTVEtcRow tags = length (filter isTVTag tags) == 0
 
 isTVTag :: Tag String -> Bool
-isTVTag (TagText txt) = txt == "\n(TV Series)\n"
+isTVTag (TagText txt) = txt == "\n(TV Series)\n" || txt == "\n(Video Short)\n" || txt == "\n(TV Mini-Series)\n" || txt == "\n(Short)\n" || txt == "\n(TV Movie)\n" || txt == "\n(Video)\n" || txt == "\n(scenes deleted)\n" || txt == "\n(Video Game)\n" || endsWith "(uncredited)\n" txt
 isTVTag _ = False
 

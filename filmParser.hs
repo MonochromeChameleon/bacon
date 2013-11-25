@@ -8,9 +8,10 @@ import StringUtils
 
 -- Only one public method: getCastDetails, which parses an html page into a list of (name, url) tuples
 
-getCastDetails :: String -> [(Name, ImdbID)]
-getCastDetails html = castDetails
+getCastDetails :: String -> Maybe [(Name, ImdbID)]
+getCastDetails html = if isAdult then Nothing else Just castDetails
     where tags        = parseTags html        -- TagSoup parsing
+          isAdult     = checkAdultStatus tags -- Let's skip the ruder elements of the IMDB. Particularly as they tend to have larger cast lists...
           cast        = castTags tags         -- Get rid of anything that isn't the cast section (i.e. not production crew etc.)
           rows        = groupByRows cast      -- Group the filmography into rows
           filtered    = filter isCastRow rows -- Some of the rows don't actually contain cast details
@@ -25,6 +26,19 @@ search), and then we are interested in the next <div class="filmo-category-secti
 - Drop all tags up to the one whose id begins "filmo-head-act"
 - Then drop all tags up to the next with class "filmo-category-section"
 - Then keep all tags up until the next with id beginning "filmo-head"  -}
+
+checkAdultStatus :: [Tag String] -> Bool
+checkAdultStatus [] = False
+checkAdultStatus tags = result
+    where genreTags = dropWhile notGenreTag tags
+          genreValue = getContent $ genreTags!!1
+          isAdult = genreValue == "Adult"
+          recursiveResult = checkAdultStatus $ tail genreTags
+          result = if length genreTags < 1 then False else (isAdult || recursiveResult)
+    
+notGenreTag :: Tag String -> Bool
+notGenreTag (TagOpen tag atts) = tag /= "span" || length (filter (\x -> fst x == "class" && (snd x == "itemprop")) atts) == 0 || length (filter (\x -> fst x == "itemprop" && (snd x == "genre")) atts) == 0
+isGenreTag _ = False
 
 castTags :: [Tag String] -> [Tag String]
 castTags tags = rowTags --QQ This might be the error

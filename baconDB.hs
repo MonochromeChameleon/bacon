@@ -80,6 +80,17 @@ storeFilms actor films = do
     
     return newFilms
     
+deleteFilm :: Film -> IO ()
+deleteFilm film = do
+    conn <- connectSqlite3 "bacon.db"
+    stmt1 <- prepare conn "DELETE FROM film WHERE imdbId = ?"
+    execute stmt1 [toSql $ imdbId film]
+    
+    stmt2 <- prepare conn "DELETE FROM actor_film WHERE film_id = ?"
+    execute stmt2 [toSql $ imdbId film]
+    
+    return ()
+    
 doStoreActorFilms :: Connection -> Actor -> [Film] -> IO()
 doStoreActorFilms conn actor films = do
     stmt <- prepare conn "INSERT INTO actor_film (actor_id, film_id) VALUES (?, ?)"
@@ -89,12 +100,13 @@ doMarkActorAsProcessed :: Connection -> Actor -> IO()
 doMarkActorAsProcessed conn actor = do
     stmt <- prepare conn "UPDATE actor SET processed = true WHERE imdbId = ?"
     execute stmt [toSql $ imdbId actor]
+    return ()
     
 doMarkFilmAsProcessed :: Connection -> Film -> IO()
 doMarkFilmAsProcessed conn film = do
     stmt <- prepare conn "UPDATE film SET processed = true WHERE imdbId = ?"
     execute stmt [toSql $ imdbId film]
-    
+    return ()
     
 doStoreFilmActors :: Connection -> Film -> [Actor] -> IO()
 doStoreFilmActors conn film actors = do

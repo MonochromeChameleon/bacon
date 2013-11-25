@@ -70,12 +70,20 @@ doCrawlFilm baconNumber film = do
     filmPage <- downloadURL $ filmUrl film
     let actors = getCastDetails filmPage
     
+    storeFilmActors baconNumber film actors
+    
+    
+storeFilmActors :: BaconNumber -> Film -> Maybe [(Name, ImdbID)] -> IO [Actor]
+storeFilmActors _ film Nothing = do
+    -- delete Nothing films
+    putStrLn $ "Removing " ++ (name film) ++ " from database"
+    deleteFilm film
+    return []
+    
+storeFilmActors baconNumber film (Just actors) = do
     putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (name film) ++ " with baconNumber " ++ (show baconNumber)
-    
     newActors <- storeActors film $ convertDetails baconNumber actors
-    
     putStrLn $ "Stored " ++ (show $ length newActors) ++ " new actors"
-    
     return newActors
 
     
