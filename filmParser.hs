@@ -1,4 +1,4 @@
-module FilmParser(getCastDetails) where
+module FilmParser where
 
 import Text.HTML.TagSoup
 import Data.List
@@ -14,7 +14,7 @@ getCastDetails html = if isAdult then Nothing else Just castDetails
           isAdult     = checkAdultStatus tags -- Let's skip the ruder elements of the IMDB. Particularly as they tend to have larger cast lists...
           cast        = castTags tags         -- Get rid of anything that isn't the cast section (i.e. not production crew etc.)
           rows        = groupByRows cast      -- Group the filmography into rows
-          filtered    = filter isCastRow rows -- Some of the rows don't actually contain cast details
+          filtered    = filter isCreditedCastRow rows -- Some of the rows don't actually contain cast details, and we skip uncredited roles
           castDetails = map parseRow filtered -- Parse our rows into the necessary details
 
           
@@ -38,7 +38,7 @@ checkAdultStatus tags = result
     
 notGenreTag :: Tag String -> Bool
 notGenreTag (TagOpen tag atts) = tag /= "span" || length (filter (\x -> fst x == "class" && (snd x == "itemprop")) atts) == 0 || length (filter (\x -> fst x == "itemprop" && (snd x == "genre")) atts) == 0
-isGenreTag _ = False
+notGenreTag _ = True
 
 castTags :: [Tag String] -> [Tag String]
 castTags tags = rowTags --QQ This might be the error
@@ -72,13 +72,14 @@ getLink (TagOpen "a" atts) = snd $ (filter (\x -> fst x == "href") atts)!!0 -- G
  
 getContent :: Tag String -> String
 getContent (TagText txt) = txt -- Get the text content of the node
+getContent _ = ""
 
 
 
 -- Filtering functions for finding our tags of interest
 
-isCastRow :: [Tag String] -> Bool
-isCastRow tags = length (dropWhile notCastCell tags) > 0
+isCreditedCastRow :: [Tag String] -> Bool
+isCreditedCastRow tags = length (dropWhile notCastCell tags) > 0 && length (filter (\x -> endsWith "(uncredited)" $ trim $ getContent x) tags) == 0
 
 notCastCell :: Tag String -> Bool
 notCastCell (TagOpen tag atts) = length (filter (\x -> fst x == "itemprop" && (snd x == "actor")) atts) == 0

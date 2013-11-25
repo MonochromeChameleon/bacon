@@ -98,14 +98,14 @@ doStoreActorFilms conn actor films = do
 
 doMarkActorAsProcessed :: Connection -> Actor -> IO()
 doMarkActorAsProcessed conn actor = do
-    stmt <- prepare conn "UPDATE actor SET processed = true WHERE imdbId = ?"
-    execute stmt [toSql $ imdbId actor]
+    stmt <- prepare conn "UPDATE actor SET processed = ? WHERE imdbId = ?"
+    execute stmt [toSql True, toSql $ imdbId actor]
     return ()
     
 doMarkFilmAsProcessed :: Connection -> Film -> IO()
 doMarkFilmAsProcessed conn film = do
-    stmt <- prepare conn "UPDATE film SET processed = true WHERE imdbId = ?"
-    execute stmt [toSql $ imdbId film]
+    stmt <- prepare conn "UPDATE film SET processed = ? WHERE imdbId = ?"
+    execute stmt [toSql True, toSql $ imdbId film]
     return ()
     
 doStoreFilmActors :: Connection -> Film -> [Actor] -> IO()
