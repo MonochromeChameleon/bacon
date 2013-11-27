@@ -9,7 +9,7 @@ import StringUtils
 
 -- Only one public method: getFilmographyDetails, which parses an html page into a list of (film name, url) tuples
 
-getFilmographyDetails :: String -> [(Name, ImdbID, Year)]
+getFilmographyDetails :: String -> [Film]
 getFilmographyDetails html = filmDetails
     where tags        = parseTags html          -- TagSoup parsing
           filmography = filmographyTags tags    -- Get rid of anything that isn't the acting filmography section (i.e. not director, soundtrack etc.)
@@ -49,14 +49,18 @@ doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
 
 
 
-parseRow :: [Tag String] -> (Name, ImdbID, Year)
-parseRow tags = (filmName, imdbId, year)
+parseRow :: [Tag String] -> Film
+parseRow tags = Film { title = filmName, film_id = imdbId, year = yr }
     where yearTags = dropWhile notYear tags
-          year = read (take 4 $ trim $ getContent $ yearTags!!1)::Year
+          yr = parseYear $ trim $ getContent $ yearTags!!1
           tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
           url = getLink $ tagsOfInterest!!0         -- URL comes first
           filmName = getContent $ tagsOfInterest!!1 -- Name of the film is the text node inside the <a>tag
           imdbId = takeWhile (\x -> x /= '/') $ drop 7 url
+          
+parseYear :: String -> Year
+parseYear "" = 2014
+parseYear str = read (take 4 str)::Year
 
 getLink :: Tag String -> String
 getLink (TagOpen "a" atts) = snd $ (filter (\x -> fst x == "href") atts)!!0 -- Get the content of the href attribute

@@ -49,7 +49,7 @@ doCrawlActor baconNumber actor = do
     
     putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor) ++ " with baconNumber " ++ (show baconNumber)
     
-    newFilms <- storeFilms actor $ convertFilmDetails baconNumber films
+    newFilms <- storeFilms actor films
     
     putStrLn $ "Stored " ++ (show $ length newFilms) ++ " new films"
     
@@ -75,15 +75,15 @@ doCrawlFilm baconNumber film = do
         return []
     else do
         castPage <- downloadURL $ fullCastUrl film
-        let actors = getCastDetails castPage
+        let actors = getCastDetails baconNumber castPage
     
         storeFilmActors baconNumber film actors
     
     
-storeFilmActors :: BaconNumber -> Film -> [(Name, ImdbID)] -> IO [Actor]
+storeFilmActors :: BaconNumber -> Film -> [Actor] -> IO [Actor]
 storeFilmActors baconNumber film actors = do
     putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with baconNumber " ++ (show baconNumber)
-    newActors <- storeActors film $ convertActorDetails baconNumber actors
+    newActors <- storeActors film actors
     putStrLn $ "Stored " ++ (show $ length newActors) ++ " new actors"
     return newActors
 

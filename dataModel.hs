@@ -14,13 +14,6 @@ type Year = Int
 type BaconNumber = Int
 
 type URL = String
-
-
-convertFilmDetails :: BaconNumber -> [(Name, ImdbID, Year)] -> [Film]
-convertFilmDetails baconNumber details = map (createFilm baconNumber) details
-
-createFilm :: BaconNumber -> (Name, ImdbID, Year) -> Film
-createFilm bn (nm, imdb, yr) = Film { film_id = imdb, title = nm, year = yr }
           
 convertActorDetails :: BaconNumber -> [(Name, ImdbID)] -> [Actor]
 convertActorDetails baconNumber details = map (createActor baconNumber) details
