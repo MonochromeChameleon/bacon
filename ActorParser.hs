@@ -2,13 +2,14 @@ module ActorParser where --(getFilmographyDetails) where
 
 import Text.HTML.TagSoup
 import Data.List
+import Data.Char
 
 import DataModel
 import StringUtils
 
 -- Only one public method: getFilmographyDetails, which parses an html page into a list of (film name, url) tuples
 
-getFilmographyDetails :: String -> [(Name, ImdbID)]
+getFilmographyDetails :: String -> [(Name, ImdbID, Year)]
 getFilmographyDetails html = filmDetails
     where tags        = parseTags html          -- TagSoup parsing
           filmography = filmographyTags tags    -- Get rid of anything that isn't the acting filmography section (i.e. not director, soundtrack etc.)
@@ -48,9 +49,11 @@ doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
 
 
 
-parseRow :: [Tag String] -> (Name, ImdbID)
-parseRow tags = (filmName, imdbId)
-    where tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
+parseRow :: [Tag String] -> (Name, ImdbID, Year)
+parseRow tags = (filmName, imdbId, year)
+    where yearTags = dropWhile notYear tags
+          year = read (take 4 $ trim $ getContent $ yearTags!!1)::Year
+          tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
           url = getLink $ tagsOfInterest!!0         -- URL comes first
           filmName = getContent $ tagsOfInterest!!1 -- Name of the film is the text node inside the <a>tag
           imdbId = takeWhile (\x -> x /= '/') $ drop 7 url
@@ -64,6 +67,10 @@ getContent (TagText txt) = txt -- Get the text content of the node
 
 
 -- Filtering functions for finding our tags of interest
+
+notYear :: Tag String -> Bool
+notYear (TagOpen tag atts) = length (filter (\x -> fst x == "class" && snd x == "year_column") atts) == 0
+notYear _ = True
 
 -- Check for a tag with id starting "filmo-head-act"
 notActorHeader :: Tag String -> Bool
@@ -94,6 +101,7 @@ notTVEtcRow :: [Tag String] -> Bool
 notTVEtcRow tags = length (filter isTVTag tags) == 0
 
 isTVTag :: Tag String -> Bool
-isTVTag (TagText txt) = txt == "\n(TV Series)\n" || txt == "\n(Video Short)\n" || txt == "\n(TV Mini-Series)\n" || txt == "\n(Short)\n" || txt == "\n(TV Movie)\n" || txt == "\n(Video)\n" || txt == "\n(scenes deleted)\n" || txt == "\n(Video Game)\n" || endsWith "(uncredited)\n" txt
+isTVTag (TagText txt) = elem lowerText ["(tv series)", "(video short)", "(tv mini-series)", "(short)", "(tv movie)", "(video)", "(scenes deleted)", "(video game)"] || endsWith "(uncredited)" lowerText
+    where lowerText = trim $ map toLower txt
 isTVTag _ = False
 

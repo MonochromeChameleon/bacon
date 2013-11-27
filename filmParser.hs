@@ -8,14 +8,17 @@ import StringUtils
 
 -- Only one public method: getCastDetails, which parses an html page into a list of (name, url) tuples
 
-getCastDetails :: String -> Maybe [(Name, ImdbID)]
-getCastDetails html = if isAdult then Nothing else Just castDetails
+getCastDetails :: String -> [(Name, ImdbID)]
+getCastDetails html   = castDetails
     where tags        = parseTags html        -- TagSoup parsing
-          isAdult     = checkAdultStatus tags -- Let's skip the ruder elements of the IMDB. Particularly as they tend to have larger cast lists...
           cast        = castTags tags         -- Get rid of anything that isn't the cast section (i.e. not production crew etc.)
           rows        = groupByRows cast      -- Group the filmography into rows
           filtered    = filter isCreditedCastRow rows -- Some of the rows don't actually contain cast details, and we skip uncredited roles
           castDetails = map parseRow filtered -- Parse our rows into the necessary details
+
+checkAdultStatus :: String -> Bool
+checkAdultStatus html = doCheckAdultStatus tags
+    where tags = parseTags html
 
           
 -- Private methods
@@ -27,13 +30,13 @@ search), and then we are interested in the next <div class="filmo-category-secti
 - Then drop all tags up to the next with class "filmo-category-section"
 - Then keep all tags up until the next with id beginning "filmo-head"  -}
 
-checkAdultStatus :: [Tag String] -> Bool
-checkAdultStatus [] = False
-checkAdultStatus tags = result
+doCheckAdultStatus :: [Tag String] -> Bool
+doCheckAdultStatus [] = False
+doCheckAdultStatus tags = result
     where genreTags = dropWhile notGenreTag tags
           genreValue = getContent $ genreTags!!1
           isAdult = genreValue == "Adult"
-          recursiveResult = checkAdultStatus $ tail genreTags
+          recursiveResult = doCheckAdultStatus $ drop 1 genreTags
           result = if length genreTags < 1 then False else (isAdult || recursiveResult)
     
 notGenreTag :: Tag String -> Bool
@@ -43,7 +46,7 @@ notGenreTag _ = True
 castTags :: [Tag String] -> [Tag String]
 castTags tags = rowTags --QQ This might be the error
     where tagsFromCastOnwards = dropWhile notCast tags                -- Find the start of the cast table
-          castTags = takeWhile notEndTable $ tail tagsFromCastOnwards -- Drop the tail from the content of interest
+          castTags = takeWhile notEndTable $ drop 1 tagsFromCastOnwards -- Drop the tail from the content of interest
           rowTags = dropWhile notRow castTags                         -- Cleanup so that we start on a row
 
 

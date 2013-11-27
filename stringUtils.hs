@@ -4,7 +4,7 @@ notWhiteSpace :: Char -> Bool
 notWhiteSpace = not.isWhiteSpace
 
 isWhiteSpace :: Char -> Bool
-isWhiteSpace x = (x == ' ' || x == '\t' || x == '\r' || x == '\n')
+isWhiteSpace x = elem x [' ', '\t', '\n', '\r', '\160']
 
 trimL :: String -> String
 trimL str = dropWhile isWhiteSpace str

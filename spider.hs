@@ -18,8 +18,7 @@ catchUp :: BaconNumber -> Int -> IO()
 catchUp baconNumber maxBacon | baconNumber == maxBacon = return()
                              | otherwise = do
     films <- loadFilmsWithBacon baconNumber
-    let filtered = dropWhile (\x -> (name x) /= "Twinkle Toes") films
-    newActors <- crawlFilms (baconNumber + 1) filtered
+    newActors <- crawlFilms (baconNumber + 1) films
     
     crawl (baconNumber + 1) maxBacon
 
@@ -50,7 +49,7 @@ doCrawlActor baconNumber actor = do
     
     putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor) ++ " with baconNumber " ++ (show baconNumber)
     
-    newFilms <- storeFilms actor $ convertDetails baconNumber films
+    newFilms <- storeFilms actor $ convertFilmDetails baconNumber films
     
     putStrLn $ "Stored " ++ (show $ length newFilms) ++ " new films"
     
@@ -68,30 +67,35 @@ doCrawlFilms actors baconNumber (film:films) = do
 doCrawlFilm :: BaconNumber -> Film -> IO [Actor]
 doCrawlFilm baconNumber film = do
     filmPage <- downloadURL $ filmUrl film
-    let actors = getCastDetails filmPage
+    let isAdult = checkAdultStatus filmPage
     
-    storeFilmActors baconNumber film actors
+    if isAdult then do
+        putStrLn "THIS IS RUDE!±!!!"
+        deleteFilm film
+        return []
+    else do
+        castPage <- downloadURL $ fullCastUrl film
+        let actors = getCastDetails castPage
+    
+        storeFilmActors baconNumber film actors
     
     
-storeFilmActors :: BaconNumber -> Film -> Maybe [(Name, ImdbID)] -> IO [Actor]
-storeFilmActors _ film Nothing = do
-    -- delete Nothing films
-    putStrLn $ "Removing " ++ (name film) ++ " from database"
-    deleteFilm film
-    return []
-    
-storeFilmActors baconNumber film (Just actors) = do
-    putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (name film) ++ " with baconNumber " ++ (show baconNumber)
-    newActors <- storeActors film $ convertDetails baconNumber actors
+storeFilmActors :: BaconNumber -> Film -> [(Name, ImdbID)] -> IO [Actor]
+storeFilmActors baconNumber film actors = do
+    putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with baconNumber " ++ (show baconNumber)
+    newActors <- storeActors film $ convertActorDetails baconNumber actors
     putStrLn $ "Stored " ++ (show $ length newActors) ++ " new actors"
     return newActors
 
     
 actorUrl :: Actor -> URL
-actorUrl actor = imdbBaseUrl ++ "name/" ++ (imdbId actor) ++ "/"
+actorUrl actor = imdbBaseUrl ++ "name/" ++ (actor_id actor) ++ "/"
 
 filmUrl :: Film -> URL
-filmUrl film = imdbBaseUrl ++ "title/" ++ (imdbId film) ++ "/fullcredits"
+filmUrl film = imdbBaseUrl ++ "title/" ++ (film_id film) ++ "/"
+
+fullCastUrl :: Film -> URL
+fullCastUrl film = imdbBaseUrl ++ "title/" ++ (film_id film) ++ "/fullcredits"
     
 downloadURL :: String -> IO String
 downloadURL url = do

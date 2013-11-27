@@ -1,22 +1,29 @@
 module DataModel where
 
-type Actor = ImdbRecord
-type Film = ImdbRecord
-
-data ImdbRecord = ImdbRecord { imdbId :: ImdbID
-                             , name :: Name
-                             , baconNumber :: BaconNumber } deriving (Eq, Show)
+data Actor = Actor { actor_id :: ImdbID
+                   , name :: Name
+                   , baconNumber :: BaconNumber } deriving (Eq, Show)
+                   
+data Film = Film { film_id :: ImdbID
+                 , title :: Name
+                 , year :: Year } deriving (Eq, Show)
                  
 type ImdbID = String
 type Name = String
+type Year = Int
 type BaconNumber = Int
 
 type URL = String
 
 
-convertDetails :: BaconNumber -> [(Name, ImdbID)] -> [ImdbRecord]
-convertDetails baconNumber details = map (createRecord baconNumber) details
+convertFilmDetails :: BaconNumber -> [(Name, ImdbID, Year)] -> [Film]
+convertFilmDetails baconNumber details = map (createFilm baconNumber) details
 
-createRecord :: BaconNumber -> (Name, ImdbID) -> ImdbRecord
-createRecord bn (nm, imdb) = ImdbRecord { baconNumber = bn, name = nm, imdbId = imdb}
+createFilm :: BaconNumber -> (Name, ImdbID, Year) -> Film
+createFilm bn (nm, imdb, yr) = Film { film_id = imdb, title = nm, year = yr }
           
+convertActorDetails :: BaconNumber -> [(Name, ImdbID)] -> [Actor]
+convertActorDetails baconNumber details = map (createActor baconNumber) details
+
+createActor :: BaconNumber -> (Name, ImdbID) -> Actor
+createActor bn (nm, imdb) = Actor { actor_id = imdb, name = nm, baconNumber = bn }
