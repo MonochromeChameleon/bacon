@@ -55,7 +55,7 @@ parseRow tags = Film { title = filmName, film_id = imdbId, year = yr }
           yr = parseYear $ trim $ getContent $ yearTags!!1
           tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
           url = getLink $ tagsOfInterest!!0         -- URL comes first
-          filmName = getContent $ tagsOfInterest!!1 -- Name of the film is the text node inside the <a>tag
+          filmName = getContent $ (dropWhile notTagText tagsOfInterest)!!0 -- Name of the film is the text node inside the <a>tag
           imdbId = takeWhile (\x -> x /= '/') $ drop 7 url
           
 parseYear :: String -> Year
@@ -71,6 +71,10 @@ getContent (TagText txt) = txt -- Get the text content of the node
 
 
 -- Filtering functions for finding our tags of interest
+
+notTagText :: Tag String -> Bool
+notTagText (TagText _) = False
+notTagText _ = True
 
 notYear :: Tag String -> Bool
 notYear (TagOpen tag atts) = length (filter (\x -> fst x == "class" && snd x == "year_column") atts) == 0
@@ -105,7 +109,7 @@ notTVEtcRow :: [Tag String] -> Bool
 notTVEtcRow tags = length (filter isTVTag tags) == 0
 
 isTVTag :: Tag String -> Bool
-isTVTag (TagText txt) = elem lowerText ["(tv series)", "(video short)", "(tv mini-series)", "(short)", "(tv movie)", "(video)", "(scenes deleted)", "(video game)"] || endsWith "(uncredited)" lowerText
+isTVTag (TagText txt) = elem lowerText ["(tv series)", "(video short)", "(tv mini-series)", "(short)", "(tv movie)", "(video)", "(scenes deleted)", "(video game)", "(tv short)"] || endsWith "(uncredited)" lowerText
     where lowerText = trim $ map toLower txt
 isTVTag _ = False
 
