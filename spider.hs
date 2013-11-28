@@ -8,46 +8,59 @@ import BaconDB
 import DataModel
 import ActorParser
 import FilmParser
-
-imdbBaseUrl :: String
-imdbBaseUrl = "http://www.imdb.com/"
+import StringUtils
 
 
+-- Let's have a nice alias
+crawl :: Int -> IO()
+crawl maxBacon = do
+    processingStatus <- getProcessingStatus
+    if (snd processingStatus) then
+        loadAndCrawlActors (fst processingStatus) maxBacon
+    else
+        loadAndCrawlFilms (fst processingStatus) maxBacon
 
-catchUp :: BaconNumber -> Int -> IO()
-catchUp baconNumber maxBacon | baconNumber == maxBacon = return()
-                             | otherwise = do
-    films <- loadFilmsWithBacon baconNumber
-    newActors <- crawlFilms (baconNumber + 1) films
+
+-- =================================== --
+-- == ACTOR PAGE CRAWLING & PARSING == --
+-- =================================== --
+
+-- Here we look up all unprocessed actors of the appropriate bacon level, fetch their filmographies
+-- and then call through to crawl the films
+loadAndCrawlActors :: Bacon -> Int -> IO()
+loadAndCrawlActors bacon maxBacon | bacon == maxBacon = return ()
+                                  | otherwise = do
+    actors <- loadActorsWithBacon bacon
     
-    crawl (baconNumber + 1) maxBacon
-
-
-crawl :: BaconNumber -> Int -> IO()
-crawl baconNumber maxBacon | baconNumber == maxBacon = return ()
-                           | otherwise = do
-    actors <- loadActorsWithBacon baconNumber
-    films <- crawlActors baconNumber actors
-    newActors <- crawlFilms (baconNumber + 1) films
-
-    crawl (baconNumber + 1) maxBacon
+    if length actors == 0 then
+        loadAndCrawlActors (bacon + 1) maxBacon
+    else do
+        putStrLn $ "Processing " ++ (show $ length actors) ++ " actors"
+        crawlActors actors
+        loadAndCrawlFilms (bacon + 1) maxBacon
     
     
-crawlActors :: BaconNumber -> [Actor] -> IO [Film]
+-- alias for the recursive call
+crawlActors :: [Actor] -> IO [Film]
 crawlActors = doCrawlActors []
 
-doCrawlActors :: [Film] -> BaconNumber -> [Actor] -> IO [Film]
-doCrawlActors films _ [] = return films
-doCrawlActors films baconNumber (actor:actors) = do
-    newFilms <- doCrawlActor baconNumber actor
-    doCrawlActors (films ++ newFilms) baconNumber actors
-    
-doCrawlActor :: BaconNumber -> Actor -> IO [Film]
-doCrawlActor baconNumber actor = do
+
+-- Recursively crawl all the supplied actors, returning the aggregated filmographies
+-- of those actors.
+doCrawlActors :: [Film] -> [Actor] -> IO [Film]
+doCrawlActors films [] = return films
+doCrawlActors films (actor:actors) = do
+    newFilms <- doCrawlActor actor
+    doCrawlActors (films ++ newFilms) actors
+
+
+-- Crawl an individual actor page, returning their filmography
+doCrawlActor :: Actor -> IO [Film]
+doCrawlActor actor = do
     actorPage <- downloadURL $ actorUrl actor
     let films = getFilmographyDetails actorPage
     
-    putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor) ++ " with baconNumber " ++ (show baconNumber)
+    putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor)
     
     newFilms <- storeFilms actor films
     
@@ -55,48 +68,69 @@ doCrawlActor baconNumber actor = do
     
     return newFilms
 
-crawlFilms :: BaconNumber -> [Film] -> IO [Actor]
+
+-- ================================== --
+-- == FILM PAGE CRAWLING & PARSING == --
+-- ================================== --
+
+-- Here we look up all unprocessed films, ordered by release date (ASC) and process their
+-- cast lists, before calling through to crawl the newly-found actors
+loadAndCrawlFilms :: Bacon -> Int -> IO()
+loadAndCrawlFilms bacon maxBacon = do
+    films <- loadUnprocessedFilms
+    
+    putStrLn $ "Processing " ++ (show $ length films) ++ " films"
+    
+    crawlFilms bacon films
+    
+    loadAndCrawlActors bacon maxBacon 
+
+
+-- Alias for the recursive call    
+crawlFilms :: Bacon -> [Film] -> IO [Actor]
 crawlFilms = doCrawlFilms []
 
-doCrawlFilms :: [Actor] -> BaconNumber -> [Film] -> IO [Actor]
-doCrawlFilms actors _ [] = return actors
-doCrawlFilms actors baconNumber (film:films) = do
-    newActors <- doCrawlFilm baconNumber film
-    doCrawlFilms (actors ++ newActors) baconNumber films
 
-doCrawlFilm :: BaconNumber -> Film -> IO [Actor]
-doCrawlFilm baconNumber film = do
+-- Recursively crawl all the supplied films, returning the aggregated casts
+-- of those films.
+doCrawlFilms :: [Actor] -> Bacon -> [Film] -> IO [Actor]
+doCrawlFilms actors _ [] = return actors
+doCrawlFilms actors bacon (film:films) = do
+    newActors <- doCrawlFilm bacon film
+    doCrawlFilms (actors ++ newActors) bacon films
+
+
+-- Crawl an individual film page, first checking for adult films and removing 
+-- them, and returning the cast list for any other films
+doCrawlFilm :: Bacon -> Film -> IO [Actor]
+doCrawlFilm bacon film = do
     filmPage <- downloadURL $ filmUrl film
     let isAdult = checkAdultStatus filmPage
     
     if isAdult then do
-        putStrLn "THIS IS RUDE!±!!!"
+        putStrLn "THIS IS RUDE!!!!"
         deleteFilm film
         return []
     else do
         castPage <- downloadURL $ fullCastUrl film
-        let actors = getCastDetails baconNumber castPage
+        let actors = getCastDetails bacon castPage
     
-        storeFilmActors baconNumber film actors
+        storeFilmActors bacon film actors
     
-    
-storeFilmActors :: BaconNumber -> Film -> [Actor] -> IO [Actor]
-storeFilmActors baconNumber film actors = do
-    putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with baconNumber " ++ (show baconNumber)
+
+-- Store the film-actor relationship so that we can track back to our original actor later on.
+storeFilmActors :: Bacon -> Film -> [Actor] -> IO [Actor]
+storeFilmActors bacon film actors = do
+    putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with " ++ (pluralize bacon "slice") ++ " of bacon"
     newActors <- storeActors film actors
     putStrLn $ "Stored " ++ (show $ length newActors) ++ " new actors"
     return newActors
 
-    
-actorUrl :: Actor -> URL
-actorUrl actor = imdbBaseUrl ++ "name/" ++ (actor_id actor) ++ "/"
 
-filmUrl :: Film -> URL
-filmUrl film = imdbBaseUrl ++ "title/" ++ (film_id film) ++ "/"
+-- ============================ --
+-- == PAGE DOWNLOAD FUNCTION == --
+-- ============================ --
 
-fullCastUrl :: Film -> URL
-fullCastUrl film = imdbBaseUrl ++ "title/" ++ (film_id film) ++ "/fullcredits"
-    
 downloadURL :: String -> IO String
 downloadURL url = do
     resp <- simpleHTTP request
@@ -108,25 +142,3 @@ downloadURL url = do
 
     where request = Request {rqURI = uri, rqMethod = GET, rqHeaders = [], rqBody = ""}
           uri = fromJust $ parseURI url
-          
-          
-          
-          
-          
-{-crawlActor :: BaconNumber -> Int -> Actor -> IO()
-crawlActor baconNumber maxBacon actor = do
-    actorPage <- downloadURL $ actorUrl actor
-    let films = getFilmographyDetails actorPage
-    
-    putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor) ++ " with baconNumber " ++ (show baconNumber)
-    
-    newFilms <- storeFilms actor $ convertDetails baconNumber films
-    
-    putStrLn $ "Stored " ++ (show $ length newFilms) ++ " new films"
-    
-    newActors <- crawlFilms (baconNumber + 1) maxBacon newFilms
-
-    if (baconNumber < maxBacon) then do
-        crawlActors (baconNumber + 1) maxBacon newActors
-    else
-        return () -}

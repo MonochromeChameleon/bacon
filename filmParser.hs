@@ -8,13 +8,13 @@ import StringUtils
 
 -- Only one public method: getCastDetails, which parses an html page into a list of (name, url) tuples
 
-getCastDetails :: BaconNumber -> String -> [Actor]
-getCastDetails baconNumber html = castDetails
+getCastDetails :: Bacon -> String -> [Actor]
+getCastDetails bacon html = castDetails
     where tags        = parseTags html        -- TagSoup parsing
           cast        = castTags tags         -- Get rid of anything that isn't the cast section (i.e. not production crew etc.)
           rows        = groupByRows cast      -- Group the filmography into rows
           filtered    = filter isCreditedCastRow rows -- Some of the rows don't actually contain cast details, and we skip uncredited roles
-          castDetails = map (parseRow baconNumber) filtered -- Parse our rows into the necessary details
+          castDetails = map (parseRow bacon) filtered -- Parse our rows into the necessary details
 
 checkAdultStatus :: String -> Bool
 checkAdultStatus html = doCheckAdultStatus tags
@@ -63,8 +63,8 @@ doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
    where (newGroup, rest) = span notRow tags
 
 
-parseRow :: BaconNumber -> [Tag String] -> Actor
-parseRow bn tags = Actor { actor_id = imdbId, name = nm, baconNumber = bn }
+parseRow :: Bacon -> [Tag String] -> Actor
+parseRow bn tags = Actor { actor_id = imdbId, name = nm, bacon = bn }
     where tagsOfInterest = dropWhile notLink $ dropWhile notCastCell tags -- Drop everything up to the hyperlink
           url = getLink $ tagsOfInterest!!0     -- URL comes first
           nm = getContent $ tagsOfInterest!!3 -- Name of the person is the text node inside the <span> in the <a>tag

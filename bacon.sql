@@ -1,7 +1,7 @@
 CREATE TABLE actor (
     actor_id VARCHAR(20) PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
-    baconNumber INT NOT NULL,
+    bacon INT NOT NULL,
     processed BOOL NOT NULL DEFAULT False
 );
     

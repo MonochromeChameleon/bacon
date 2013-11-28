@@ -2,7 +2,7 @@ module DataModel where
 
 data Actor = Actor { actor_id :: ImdbID
                    , name :: Name
-                   , baconNumber :: BaconNumber } deriving (Eq, Show)
+                   , bacon :: Bacon } deriving (Eq, Show)
                    
 data Film = Film { film_id :: ImdbID
                  , title :: Name
@@ -11,12 +11,26 @@ data Film = Film { film_id :: ImdbID
 type ImdbID = String
 type Name = String
 type Year = Int
-type BaconNumber = Int
+type Bacon = Int
 
 type URL = String
           
-convertActorDetails :: BaconNumber -> [(Name, ImdbID)] -> [Actor]
-convertActorDetails baconNumber details = map (createActor baconNumber) details
+convertActorDetails :: Bacon -> [(Name, ImdbID)] -> [Actor]
+convertActorDetails bacon details = map (createActor bacon) details
 
-createActor :: BaconNumber -> (Name, ImdbID) -> Actor
-createActor bn (nm, imdb) = Actor { actor_id = imdb, name = nm, baconNumber = bn }
+createActor :: Bacon -> (Name, ImdbID) -> Actor
+createActor bn (nm, imdb) = Actor { actor_id = imdb, name = nm, bacon = bn }
+
+
+imdbBaseUrl :: String
+imdbBaseUrl = "http://www.imdb.com/"
+
+actorUrl :: Actor -> URL
+actorUrl actor = imdbBaseUrl ++ "name/" ++ (actor_id actor) ++ "/"
+
+filmUrl :: Film -> URL
+filmUrl film = imdbBaseUrl ++ "title/" ++ (film_id film) ++ "/"
+
+fullCastUrl :: Film -> URL
+fullCastUrl film = imdbBaseUrl ++ "title/" ++ (film_id film) ++ "/fullcredits"
+    

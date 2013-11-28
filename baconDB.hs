@@ -6,56 +6,51 @@ import Database.HDBC.Sqlite3
 import System.IO
 
 import DataModel
+import Schema
+import StringUtils
 
-createDB :: IO ()
-createDB = do
-    schema <- readFile "bacon.sql"     -- Get our DB schema from an external SQL file
+    
+getProcessingStatus :: IO (Bacon, Bool)
+getProcessingStatus = do
     conn <- connectSqlite3 "bacon.db"
-    runMany conn $ schemaParts schema -- Run all individual schema commands against the connection
-    commit conn
+    let query = "SELECT MIN(bacon) FROM actor WHERE processed = ?"
+    res <- getSingleResult conn query [toSql False]
+    
+    let incomplete = "SELECT COUNT(*) > 0 FROM actor WHERE bacon = ? AND processed = ?"
+    incompleteRes <- getSingleResult conn incomplete [(res!!0), toSql True]
+    
+    let isIncomplete = (fromSql (incompleteRes!!0)::Int) == 1
+    let bacon = fromSql (res!!0)::Bacon
+    
+    return (bacon, isIncomplete)
+        
+getSingleResult :: Connection -> String -> [SqlValue] -> IO [SqlValue]
+getSingleResult conn query params = do
+    res <- quickQuery' conn query params
+    return (res!!0)
 
--- Break the Schema file into individual statements separated by semi-colons. This is safe as 
--- long as the schema file doesn't contain any bootstrap data that happens to contain semi-colons
--- inside string values etc.
-schemaParts :: String -> [String]
-schemaParts = doSchemaParts [] -- call through to curried recursive function
-
--- Recursive function for collecting schema componenets
-doSchemaParts :: [String] -> String -> [String]
-doSchemaParts parts [] = parts
-doSchemaParts parts schema = doSchemaParts (parts ++ [part ++ ";"]) (tail rest)
-    where (part, rest) = span (\x -> x /= ';') schema
-
--- Executes multiple commands
-runMany :: Connection -> [String] -> IO()
-runMany conn [] = return ()
-runMany conn (part:parts) = do
-    run conn part []
-    runMany conn parts
-    return ()
-
-loadActorsWithBacon :: BaconNumber -> IO [Actor]
-loadActorsWithBacon baconNumber = do
+loadActorsWithBacon :: Bacon -> IO [Actor]
+loadActorsWithBacon bacon = do
     conn <- connectSqlite3 "bacon.db"
-    putStrLn $ "Loading actors with bacon level " ++ (show baconNumber)
-    let query = "SELECT * FROM actor WHERE baconNumber = ? and processed = ?"
-    res <- quickQuery' conn query [toSql baconNumber, toSql False]
+    putStrLn $ "Loading actors with " ++ (pluralize bacon "slice") ++ " of bacon"
+    let query = "SELECT * FROM actor WHERE bacon = ? and processed = ?"
+    res <- quickQuery' conn query [toSql bacon, toSql False]
     commit conn
     
     return $ map convertSQLActor res
     
-loadFilmsWithBacon :: BaconNumber -> IO [Film]
-loadFilmsWithBacon baconNumber = do
+loadUnprocessedFilms :: IO [Film]
+loadUnprocessedFilms = do
     conn <- connectSqlite3 "bacon.db"
-    putStrLn $ "Loading films with bacon level " ++ (show baconNumber)
-    let query = "SELECT * FROM film WHERE baconNumber = ? and processed = ? ORDER BY year ASC"
-    res <- quickQuery' conn query [toSql baconNumber, toSql False]
+    putStrLn "Loading unprocessed films"
+
+    let query = "SELECT * FROM film WHERE processed = ? ORDER BY year ASC"
+    res <- quickQuery' conn query [toSql False]
     commit conn
     
     putStrLn $ "Found " ++ (show $ length res)
     
     return $ map convertSQLFilm res
-
 
 convertSQLFilm :: [SqlValue] -> Film
 convertSQLFilm sqlValues = Film {
@@ -67,7 +62,7 @@ convertSQLActor :: [SqlValue] -> Actor
 convertSQLActor sqlValues = Actor {
     actor_id = fromSql $ sqlValues!!0,
     name = fromSql $ sqlValues!!1,
-    baconNumber = fromSql $ sqlValues!!2 }
+    bacon = fromSql $ sqlValues!!2 }
 
 storeFilms :: Actor -> [Film] -> IO [Film]
 storeFilms actor films = do
@@ -174,38 +169,8 @@ filterActors conn actors = do
     
 doStoreActors :: Connection -> [Actor] -> IO()
 doStoreActors conn actors = do
-    stmt <- prepare conn "INSERT INTO actor (actor_id, name, baconNumber) VALUES (?, ?, ?)"
-    executeMany stmt (map (\x -> [toSql $ actor_id x, toSql $ name x, toSql $ baconNumber x]) actors)
+    stmt <- prepare conn "INSERT INTO actor (actor_id, name, bacon) VALUES (?, ?, ?)"
+    executeMany stmt (map (\x -> [toSql $ actor_id x, toSql $ name x, toSql $ bacon x]) actors)
 
 parametrize :: [SqlValue] -> String
 parametrize values = intercalate "," $ replicate (length values) "?"
-
-    
-{-storeURLs :: [URL] -> IO ()
-storeURLs [] = return ()
-storeURLs xs =
-     do conn <- connectSqlite3 "urls.db"
-        stmt <- prepare conn "INSERT INTO urls (url) VALUES (?)"
-        executeMany stmt (map (\x -> [toSql x]) xs)
-        commit conn        
-
-printURLs :: IO ()
-printURLs = do urls <- getURLs
-               mapM_ print urls
-
-getURLs :: IO [URL]
-getURLs = do conn <- connectSqlite3 "urls.db"
-             res <- quickQuery' conn "SELECT url FROM urls" []
-             return $ map fromSql (map head res)
-             
-unfoldDB :: IO ()
-unfoldDB = do urls <- getURLs
-              process urls
-
-process :: [URL] -> IO ()
-process [] = return ()
-process (x:xs) = do print $ "Processing : " ++ x
-                    urlContent <- downloadURL x
-                    storeURLs (parseURLs urlContent)
-                    process xs
--}
