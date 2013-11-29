@@ -2,7 +2,7 @@ module DataModel where
 
 data Actor = Actor { actor_id :: ImdbID
                    , name :: Name
-                   , bacon :: Bacon } deriving (Eq, Show)
+                   , bacon :: Bacon } deriving (Eq, Show, Read)
                    
 data Film = Film { film_id :: ImdbID
                  , title :: Name

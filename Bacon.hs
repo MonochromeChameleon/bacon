@@ -1,5 +1,6 @@
 import System.Environment
 
+import Config
 import BaconDB
 import Spider
 import DataModel
@@ -12,17 +13,15 @@ main :: IO()
 main = do 
     args <- getArgs
     case args of
-        ["create"] -> createDB	
-        ["seed"] -> seed kevin
+        ["initialize"] -> do 
+		createDB	
+        	seed kevin
         ["crawl", maxBacon] -> crawl (read maxBacon::Int)
         _ -> syntaxError
 
 syntaxError :: IO()
 syntaxError = putStrLn 
-  "Usage: Crawler command [args]\n\
-  \\n\
-  \create           Create database urls.db\n\
-  \show url         Shows contents of given URL\n\
-  \saved            List urls on database\n\
-  \crawl url        Gather urls and store in database\n\
-  \unfold           Crawl each of the saved URLs\n"
+  "Usage: bacon [args]\n\
+  \n\
+  \initialize       Create and seed a database\n\
+  \crawl max        Crawl from your seed reference to the specified level of connection"
