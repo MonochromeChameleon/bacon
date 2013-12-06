@@ -1,8 +1,11 @@
 module Spider where
 
-import Network.HTTP
-import Network.URI
-import Data.Maybe
+import Language.Haskell.TH.Ppr -- cabal install template-haskell
+import Network.HTTP.Conduit -- cabal install http-conduit
+import Data.Word
+import Data.Either
+import Control.Exception
+import qualified Data.ByteString.Lazy as L
 
 import BaconDB
 import DataModel
@@ -108,12 +111,11 @@ doCrawlFilm bacon film = do
 
 downloadURL :: String -> IO String
 downloadURL url = do
-    resp <- simpleHTTP request
-    case resp of
-        Left x  -> return $ "Error connecting: " ++ show x
-        Right r -> case rspCode r of
-            (2,_,_) -> return $ rspBody r
-            _       -> return $ show r
-
-    where request = Request {rqURI = uri, rqMethod = GET, rqHeaders = [], rqBody = ""}
-          uri = fromJust $ parseURI url
+    result <- try (simpleHttp url) :: IO (Either HttpException L.ByteString)
+    let e = lefts [result]
+    if length e == 0 then do
+        let text_bs = head.rights $ [result]
+        let html_word8 = L.unpack text_bs :: [Word8]
+        return $ bytesToString html_word8 :: IO String
+    else
+        return "" --QQ Handle error -> maybe another table?

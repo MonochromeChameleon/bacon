@@ -13,7 +13,7 @@ class Eq a => Entity a where
     allColumns :: a -> String
     
     saveQuery :: a -> String
-    saveQuery a = "INSERT INTO " ++ (tableName a) ++ " " ++ (allColumns a) ++ " VALUES (" ++ (parametrize $ asSql a) ++ ")"
+    saveQuery a = "INSERT INTO " ++ (tableName a) ++ " (" ++ (allColumns a) ++ ") VALUES (" ++ (parametrize $ asSql a) ++ ")"
     
     imdbid :: a -> String
     bacon :: a -> Int
@@ -22,6 +22,7 @@ class Eq a => Entity a where
 
     processed :: Connection -> a -> IO Integer
     processed conn a = run conn ("UPDATE " ++ (tableName a) ++ " SET processed = ? WHERE " ++ (idColumnName a) ++ " = ?") [toSql True, toSql $ imdbid a]    
+
     saveMany :: Connection -> [a] -> IO ()
     saveMany conn as | length as == 0 = return ()
                      | otherwise = do

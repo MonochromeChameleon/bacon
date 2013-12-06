@@ -10,6 +10,9 @@ import Schema
 import StringUtils
 
 
+---- QQ Rethink this in terms of parallelizability (how to manage actors and films running at once)
+
+
 -- |Wrapper for functions that require a connection to the database - any externally-exposed
 -- |functions in this module that use a db connection should simply defer executrion to a 
 -- |private function with the connection as its last argument, to be executed by this wrapper 
@@ -67,6 +70,9 @@ loadFilmsWithBacon_ bacon conn = do
     res <- quickQuery' conn query [toSql bacon, toSql False]
 
     return $ map readSql res
+
+
+
         
 loadUnprocessedFilms :: IO [Film]
 loadUnprocessedFilms = withConnection loadUnprocessedFilms_

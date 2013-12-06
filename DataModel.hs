@@ -56,7 +56,7 @@ fullCastUrl film = imdbBaseUrl ++ "title/" ++ (imdbid film) ++ "/fullcredits"
 instance Entity Actor where
     tableName _ = "actor"
     idColumnName _ = "actor_id"
-    allColumns _ = "(actor_id, name, bacon)"
+    allColumns _ = "actor_id, name, bacon"
     imdbid = imdbId.actor_details
     bacon = baconNumber.actor_details
     readSql = readActorSql
@@ -74,7 +74,7 @@ actorAsSql actor = [toSql $ imdbid actor, toSql $ name actor, toSql $ bacon acto
 instance Entity Film where
     tableName _ = "film"
     idColumnName _ = "film_id"
-    allColumns _ = "(film_id, title, year, bacon)"
+    allColumns _ = "film_id, title, year, bacon"
     imdbid = imdbId.film_details
     bacon = baconNumber.film_details
     readSql = readFilmSql
