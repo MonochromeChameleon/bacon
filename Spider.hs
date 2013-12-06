@@ -36,22 +36,22 @@ loadAndCrawlActors bacon maxBacon | bacon == maxBacon = return ()
         loadAndCrawlActors (bacon + 1) maxBacon
     else do
         putStrLn $ "Processing " ++ (show $ length actors) ++ " actors"
-        crawlActors actors
+        crawlActors bacon actors
         loadAndCrawlFilms (bacon + 1) maxBacon
     
     
 -- Recursively crawl all the supplied actors
-crawlActors :: [Actor] -> IO ()
-crawlActors [] = return ()
-crawlActors (actor:actors) = do
-    doCrawlActor actor
-    crawlActors actors
+crawlActors :: Bacon -> [Actor] -> IO ()
+crawlActors _ [] = return ()
+crawlActors bacon (actor:actors) = do
+    doCrawlActor bacon actor
+    crawlActors bacon actors
 
 -- Crawl an individual actor page, storing any new films in their filmography
-doCrawlActor :: Actor -> IO ()
-doCrawlActor actor = do
+doCrawlActor :: Bacon -> Actor -> IO ()
+doCrawlActor bacon actor = do
     actorPage <- downloadURL $ actorUrl actor
-    let films = getFilmographyDetails actorPage
+    let films = getFilmographyDetails bacon actorPage
     putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor)
     storeFilms actor films
 
@@ -62,8 +62,9 @@ doCrawlActor actor = do
 -- Here we look up all unprocessed films, ordered by release date (ASC) and process their
 -- cast lists, before calling through to crawl the newly-found actors
 loadAndCrawlFilms :: Bacon -> Int -> IO()
-loadAndCrawlFilms bacon maxBacon = do
-    films <- loadUnprocessedFilms
+loadAndCrawlFilms bacon maxBacon | bacon > maxBacon = return ()
+                                 | otherwise = do
+    films <- loadFilmsWithBacon bacon
     
     putStrLn $ "Processing " ++ (show $ length films) ++ " films"
     

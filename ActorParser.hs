@@ -9,13 +9,13 @@ import StringUtils
 
 -- Only one public method: getFilmographyDetails, which parses an html page into a list of (film name, url) tuples
 
-getFilmographyDetails :: String -> [Film]
-getFilmographyDetails html = filmDetails
+getFilmographyDetails :: Bacon -> String -> [Film]
+getFilmographyDetails bacon html = filmDetails
     where tags        = parseTags html          -- TagSoup parsing
           filmography = filmographyTags tags    -- Get rid of anything that isn't the acting filmography section (i.e. not director, soundtrack etc.)
           rows        = groupByRows filmography -- Group the filmography into rows
           filmRows    = filter notTVEtcRow rows -- Remove TV Shows and suchlike (they have big casts and it just gets too huge!)
-          filmDetails = map parseRow filmRows   -- Parse our rows into the necessary details
+          filmDetails = map (parseRow bacon) filmRows   -- Parse our rows into the necessary details
 
           
 -- Private methods
@@ -49,14 +49,15 @@ doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
 
 
 
-parseRow :: [Tag String] -> Film
-parseRow tags = Film { title = filmName, film_id = imdbId, year = yr }
+parseRow :: Bacon -> [Tag String] -> Film
+parseRow bc tags = Film { title = filmName, year = yr, film_details = details }
     where yearTags = dropWhile notYear tags
           yr = parseYear $ trim $ getContent $ yearTags!!1
           tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
           url = getLink $ tagsOfInterest!!0         -- URL comes first
           filmName = getContent $ (dropWhile notTagText tagsOfInterest)!!0 -- Name of the film is the text node inside the <a>tag
-          imdbId = takeWhile (\x -> x /= '/') $ drop 7 url
+          imdbid = takeWhile (\x -> x /= '/') $ drop 7 url
+          details = IMDBDetails { imdbId = imdbid, baconNumber = bc }
           
 parseYear :: String -> Year
 parseYear "" = 2014

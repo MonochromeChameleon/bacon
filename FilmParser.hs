@@ -64,11 +64,12 @@ doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
 
 
 parseRow :: Bacon -> [Tag String] -> Actor
-parseRow bn tags = Actor { actor_id = imdbId, name = nm, bacon = bn }
+parseRow bn tags = Actor { name = nm, actor_details = details }
     where tagsOfInterest = dropWhile notLink $ dropWhile notCastCell tags -- Drop everything up to the hyperlink
           url = getLink $ tagsOfInterest!!0     -- URL comes first
           nm = getContent $ tagsOfInterest!!3 -- Name of the person is the text node inside the <span> in the <a>tag
-          imdbId = takeWhile (\x -> x /= '/') $ drop 6 url
+          imdbid = takeWhile (\x -> x /= '/') $ drop 6 url
+          details = IMDBDetails { imdbId = imdbid, baconNumber = bn }
 
 getLink :: Tag String -> String
 getLink (TagOpen "a" atts) = snd $ (filter (\x -> fst x == "href") atts)!!0 -- Get the content of the href attribute

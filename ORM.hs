@@ -16,6 +16,7 @@ class Eq a => Entity a where
     saveQuery a = "INSERT INTO " ++ (tableName a) ++ " " ++ (allColumns a) ++ " VALUES (" ++ (parametrize $ asSql a) ++ ")"
     
     imdbid :: a -> String
+    bacon :: a -> Int
     readSql :: [SqlValue] -> a
     asSql :: a -> [SqlValue]
 

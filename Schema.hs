@@ -5,7 +5,10 @@ import Database.HDBC
 import Database.HDBC.Sqlite3
 import System.IO
 
+import ORM
 import DataModel
+
+----QQQQ Insert statements should use ORM props and shared connection bits
 
 createDB :: IO ()
 createDB = do
@@ -19,7 +22,7 @@ seed :: Actor -> IO ()
 seed actor = do
     conn <- connectSqlite3 "bacon.db"
     stmt <- prepare conn "INSERT INTO actor (actor_id, name, bacon) VALUES (?, ?, ?)"
-    execute stmt [toSql $ actor_id actor, toSql $ name actor, toSql $ bacon actor]
+    execute stmt [toSql $ imdbid actor, toSql $ name actor, toSql $ bacon actor]
     commit conn
 
 

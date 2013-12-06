@@ -46,7 +46,7 @@ loadActorsWithBacon bacon = withConnection $ loadActorsWithBacon_ bacon
 loadActorsWithBacon_ :: Bacon -> Connection -> IO [Actor]
 loadActorsWithBacon_ bacon conn = do
     putStrLn $ "Loading actors with " ++ (pluralize bacon "slice") ++ " of bacon"
-    let query = "SELECT * FROM actor WHERE bacon = ? and processed = ?"
+    let query = "SELECT " ++ (allColumns dummyActor) ++ " FROM actor WHERE bacon = ? AND processed = ?"
     res <- quickQuery' conn query [toSql bacon, toSql False]
     
     return $ map readSql res
@@ -54,6 +54,19 @@ loadActorsWithBacon_ bacon conn = do
     
 storeActors :: Film -> [Actor] -> IO ()
 storeActors film actors = withConnection $ save film actors
+
+
+
+loadFilmsWithBacon :: Bacon -> IO [Film]
+loadFilmsWithBacon bacon = withConnection $ loadFilmsWithBacon_ bacon
+
+loadFilmsWithBacon_ :: Bacon -> Connection -> IO [Film]
+loadFilmsWithBacon_ bacon conn = do
+    putStrLn $ "Loading films with " ++ (pluralize bacon "slice") ++ " of bacon"
+    let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE bacon = ? AND processed = ?"
+    res <- quickQuery' conn query [toSql bacon, toSql False]
+
+    return $ map readSql res
         
 loadUnprocessedFilms :: IO [Film]
 loadUnprocessedFilms = withConnection loadUnprocessedFilms_
@@ -62,7 +75,7 @@ loadUnprocessedFilms_ :: Connection -> IO [Film]
 loadUnprocessedFilms_ conn = do
     putStrLn "Loading unprocessed films"
 
-    let query = "SELECT * FROM film WHERE processed = ? ORDER BY year ASC"
+    let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE processed = ? ORDER BY year ASC"
     res <- quickQuery' conn query [toSql False]
     
     putStrLn $ "Found " ++ (show $ length res)

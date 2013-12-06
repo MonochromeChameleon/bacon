@@ -7,7 +7,8 @@ import DataModel
 import Schema
 
 kevin :: Actor
-kevin = Actor { actor_id = "nm0000102", name = "Kevin Bacon", bacon = 0 }
+kevin = Actor { name = "Kevin Bacon", actor_details = details }
+    where details = IMDBDetails { imdbId = "nm0000102", baconNumber = 0 }
 
 main :: IO()
 main = do 
