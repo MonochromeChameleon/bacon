@@ -27,29 +27,23 @@ withConnection func = do
     return res
 
     
-getProcessingStatus :: IO (Bacon, Bool)
-getProcessingStatus = withConnection getProcessingStatus_
+getProcessingStatus :: String -> IO Bacon
+getProcessingStatus table = withConnection $ getProcessingStatus_ table
 
-getProcessingStatus_ :: Connection -> IO (Bacon, Bool)
-getProcessingStatus_ conn = do
-    let query = "SELECT MIN(bacon) FROM actor WHERE processed = ?"
-    res <- getSingleResult conn query [toSql False]
+getProcessingStatus_ :: String -> Connection -> IO Bacon
+getProcessingStatus_ table conn = do
+    let query = "SELECT MIN(bacon) FROM " ++ table ++ " WHERE processed = ?"
+    res <- quickQuery' conn query [toSql False]
     
-    let incomplete = "SELECT COUNT(*) > 0 FROM actor WHERE bacon = ? AND processed = ?"
-    incompleteRes <- getSingleResult conn incomplete [(res!!0), toSql True]
-    
-    let isIncomplete = (fromSql (incompleteRes!!0)::Int) == 1
-    let bacon = fromSql (res!!0)::Bacon
-    
-    return (bacon, isIncomplete)
-    
+    return $ (fromSql (head $ res!!0) :: Bacon)
+
 loadActorsWithBacon :: Bacon -> IO [Actor]
 loadActorsWithBacon bacon = withConnection $ loadActorsWithBacon_ bacon
 
 loadActorsWithBacon_ :: Bacon -> Connection -> IO [Actor]
 loadActorsWithBacon_ bacon conn = do
     putStrLn $ "Loading actors with " ++ (pluralize bacon "slice") ++ " of bacon"
-    let query = "SELECT " ++ (allColumns dummyActor) ++ " FROM actor WHERE bacon = ? AND processed = ?"
+    let query = "SELECT " ++ (allColumns dummyActor) ++ " FROM actor WHERE bacon = ? AND processed = ? LIMIT 50000"
     res <- quickQuery' conn query [toSql bacon, toSql False]
     
     return $ map readSql res

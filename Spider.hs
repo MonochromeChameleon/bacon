@@ -2,6 +2,7 @@ module Spider where
 
 import Language.Haskell.TH.Ppr -- cabal install template-haskell
 import Network.HTTP.Conduit -- cabal install http-conduit
+import Control.Concurrent
 import Data.Word
 import Data.Either
 import Control.Exception
@@ -17,11 +18,37 @@ import StringUtils
 -- Decides what stage we had reached previously, and calls our next crawl operation
 crawl :: Int -> IO()
 crawl maxBacon = do
-    processingStatus <- getProcessingStatus
-    if (snd processingStatus) then
-        loadAndCrawlActors (fst processingStatus) maxBacon
-    else
-        loadAndCrawlFilms (fst processingStatus) maxBacon
+    --processingStatus <- getProcessingStatus
+    
+    --let actorStatus = head $ fiter (\x -> fst x == "actor") processingStatus
+    --let filmStatus = head $ filter (\x -> fst x == "film") processingStatus
+    
+    --actorSync <- newEmptyMVar :: IO (MVar Bool)
+    --filmSync <- newEmptyMVar :: IO (MVar Bool)
+    
+    --forkIO (
+    processActors maxBacon -- actorSync
+    --)
+    --forkIO (processFilms maxBacon filmSync)
+    
+    --actorSynced <- takeMVar actorSync
+    --filmSynced <- takeMVar filmSync
+    
+    putStrLn "DONE"
+
+
+processActors :: Int -> IO() --MVar Bool -> IO()
+processActors maxBacon = do --sync = do
+    bacon <- getProcessingStatus "actor"
+    loadAndCrawlActors bacon maxBacon
+    --putMVar sync True
+
+
+processFilms :: Int -> MVar Bool -> IO()
+processFilms maxBacon sync = do
+    bacon <- getProcessingStatus "film"
+    loadAndCrawlFilms bacon maxBacon
+    putMVar sync True
 
 
 -- =================================== --
@@ -31,16 +58,16 @@ crawl maxBacon = do
 -- Here we look up all unprocessed actors of the appropriate bacon level, fetch their filmographies
 -- and then call through to crawl the films
 loadAndCrawlActors :: Bacon -> Int -> IO()
-loadAndCrawlActors bacon maxBacon | bacon == maxBacon = return ()
+loadAndCrawlActors bacon maxBacon | bacon >= maxBacon = return ()
                                   | otherwise = do
     actors <- loadActorsWithBacon bacon
     
     if length actors == 0 then
-        loadAndCrawlActors (bacon + 1) maxBacon
+        putStrLn "Finished loading actors"--loadAndCrawlActors (bacon + 1) maxBacon
     else do
         putStrLn $ "Processing " ++ (show $ length actors) ++ " actors"
         crawlActors bacon actors
-        loadAndCrawlFilms (bacon + 1) maxBacon
+        --loadAndCrawlFilms (bacon + 1) maxBacon
     
     
 -- Recursively crawl all the supplied actors
@@ -65,15 +92,15 @@ doCrawlActor bacon actor = do
 -- Here we look up all unprocessed films, ordered by release date (ASC) and process their
 -- cast lists, before calling through to crawl the newly-found actors
 loadAndCrawlFilms :: Bacon -> Int -> IO()
-loadAndCrawlFilms bacon maxBacon | bacon > maxBacon = return ()
+loadAndCrawlFilms bacon maxBacon | bacon >= maxBacon = return ()
                                  | otherwise = do
     films <- loadFilmsWithBacon bacon
     
     putStrLn $ "Processing " ++ (show $ length films) ++ " films"
     
-    crawlFilms bacon films
+    crawlFilms (bacon + 1) films
     
-    loadAndCrawlActors bacon maxBacon 
+    loadAndCrawlActors (bacon + 1) maxBacon 
 
 
 -- Recursively crawl all the supplied films, storing any new actors found in the casts
