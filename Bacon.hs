@@ -1,3 +1,14 @@
+{-
+Additional required packages:
+Database.HDBC           -- cabal install HDBC
+Database.HDBC.Sqlite3   -- cabal install HDBC-Sqlite3
+Text.HTML.TagSoup       -- cabal install TagSoup
+Language.Haskell.TH.Ppr -- cabal install template-haskell
+Network.HTTP.Conduit    -- cabal install http-conduit
+-}
+
+
+
 import System.Environment
 
 import Config

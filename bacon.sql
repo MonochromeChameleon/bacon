@@ -9,6 +9,7 @@ CREATE TABLE film (
     film_id VARCHAR(20) PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     year INT NOT NULL,
+    bacon INT NOT NULL,
     processed BOOL NOT NULL DEFAULT False
 );
 

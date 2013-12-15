@@ -7,50 +7,29 @@ import Data.Word
 import Data.Either
 import Control.Exception
 import qualified Data.ByteString.Lazy as L
+import GHC.Conc (numCapabilities)
 
 import BaconDB
 import DataModel
 import ActorParser
 import FilmParser
 import StringUtils
-
+import Threads
 
 -- Decides what stage we had reached previously, and calls our next crawl operation
 crawl :: Int -> IO()
 crawl maxBacon = do
-    --processingStatus <- getProcessingStatus
+
+    putStrLn $ "Processing with " ++ (show numCapabilities) ++ " cores"
     
-    --let actorStatus = head $ fiter (\x -> fst x == "actor") processingStatus
-    --let filmStatus = head $ filter (\x -> fst x == "film") processingStatus
+    processingStatus <- getProcessingStatus
     
-    --actorSync <- newEmptyMVar :: IO (MVar Bool)
-    --filmSync <- newEmptyMVar :: IO (MVar Bool)
-    
-    --forkIO (
-    processActors maxBacon -- actorSync
-    --)
-    --forkIO (processFilms maxBacon filmSync)
-    
-    --actorSynced <- takeMVar actorSync
-    --filmSynced <- takeMVar filmSync
-    
-    putStrLn "DONE"
-
-
-processActors :: Int -> IO() --MVar Bool -> IO()
-processActors maxBacon = do --sync = do
-    bacon <- getProcessingStatus "actor"
-    loadAndCrawlActors bacon maxBacon
-    --putMVar sync True
-
-
-processFilms :: Int -> MVar Bool -> IO()
-processFilms maxBacon sync = do
-    bacon <- getProcessingStatus "film"
-    loadAndCrawlFilms bacon maxBacon
-    putMVar sync True
-
-
+    if (snd processingStatus) then
+        loadAndCrawlActors (fst processingStatus) maxBacon
+    else
+        loadAndCrawlFilms (fst processingStatus) maxBacon
+        
+        
 -- =================================== --
 -- == ACTOR PAGE CRAWLING & PARSING == --
 -- =================================== --
@@ -62,12 +41,24 @@ loadAndCrawlActors bacon maxBacon | bacon >= maxBacon = return ()
                                   | otherwise = do
     actors <- loadActorsWithBacon bacon
     
-    if length actors == 0 then
-        putStrLn "Finished loading actors"--loadAndCrawlActors (bacon + 1) maxBacon
+    if length actors == 0 then do
+        putStrLn "Finished loading actors"
+        loadAndCrawlFilms bacon maxBacon
     else do
         putStrLn $ "Processing " ++ (show $ length actors) ++ " actors"
-        crawlActors bacon actors
-        --loadAndCrawlFilms (bacon + 1) maxBacon
+        multithread $ threadedCrawlActors bacon actors
+        loadAndCrawlActors bacon maxBacon
+        
+threadedCrawlActors :: Int -> [Actor] -> Int -> Int -> MVar Bool -> IO()
+threadedCrawlActors bacon actors cores ix sync = do
+    putStrLn $ "Crawling on core " ++ (show $ ix + 1) ++ " of " ++ (show cores)
+    let numToProcess = (div (length actors) cores) + 1
+    let dropped = drop (numToProcess * ix) actors
+    let actorsToProcess = take numToProcess dropped
+    
+    crawlActors bacon actorsToProcess
+    
+    putMVar sync True 
     
     
 -- Recursively crawl all the supplied actors
@@ -95,12 +86,25 @@ loadAndCrawlFilms :: Bacon -> Int -> IO()
 loadAndCrawlFilms bacon maxBacon | bacon >= maxBacon = return ()
                                  | otherwise = do
     films <- loadFilmsWithBacon bacon
+    if length films == 0 then do
+        putStrLn "Finished loading films"
+        loadAndCrawlActors (bacon + 1) maxBacon
+    else do
+        putStrLn $ "Processing " ++ (show $ length films) ++ " films"
+        multithread $ threadedCrawlFilms (bacon + 1) films
+        loadAndCrawlFilms bacon maxBacon
+        
+        
+threadedCrawlFilms :: Int -> [Film] -> Int -> Int -> MVar Bool -> IO()
+threadedCrawlFilms bacon films cores ix sync = do
+    putStrLn $ "Crawling on core " ++ (show $ ix + 1) ++ " of " ++ (show cores)
+    let numToProcess = (div (length films) cores) + 1
+    let dropped = drop (numToProcess * ix) films
+    let filmsToProcess = take numToProcess dropped
     
-    putStrLn $ "Processing " ++ (show $ length films) ++ " films"
+    crawlFilms bacon filmsToProcess
     
-    crawlFilms (bacon + 1) films
-    
-    loadAndCrawlActors (bacon + 1) maxBacon 
+    putMVar sync True
 
 
 -- Recursively crawl all the supplied films, storing any new actors found in the casts

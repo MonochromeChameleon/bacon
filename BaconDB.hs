@@ -1,16 +1,16 @@
 module BaconDB where
 
+import Control.Concurrent
+import Control.Exception
 import Database.HDBC
 import Database.HDBC.Sqlite3
 import System.IO
+import System.Random
 
 import DataModel
 import ORM
 import Schema
 import StringUtils
-
-
----- QQ Rethink this in terms of parallelizability (how to manage actors and films running at once)
 
 
 -- |Wrapper for functions that require a connection to the database - any externally-exposed
@@ -26,16 +26,43 @@ withConnection func = do
     disconnect conn
     return res
 
-    
-getProcessingStatus :: String -> IO Bacon
-getProcessingStatus table = withConnection $ getProcessingStatus_ table
 
-getProcessingStatus_ :: String -> Connection -> IO Bacon
-getProcessingStatus_ table conn = do
-    let query = "SELECT MIN(bacon) FROM " ++ table ++ " WHERE processed = ?"
-    res <- quickQuery' conn query [toSql False]
+-- | Write-only db connection handler that will handle a locked database and try again after 1 second
+tryWithConnection :: (Connection -> IO ()) -> IO ()
+tryWithConnection func = do
+    result <- try (withConnection func) :: IO (Either SqlError ())
+    case result of
+        Left r -> tryAgain func
+        Right _ -> return ()
+        
+tryAgain :: (Connection -> IO ()) -> IO ()
+tryAgain func = do
+    putStrLn "Contention for DB Connection - waiting"
+    randomDelay <- randomRIO(100000, 10000000) -- 0.1 to 10 seconds
+    threadDelay randomDelay
+    tryWithConnection func
+
     
-    return $ (fromSql (head $ res!!0) :: Bacon)
+getProcessingStatus :: IO (Bacon, Bool)
+getProcessingStatus = withConnection getProcessingStatus_
+
+getProcessingStatus_ :: Connection -> IO (Bacon, Bool)
+getProcessingStatus_ conn = do
+    let query = "SELECT MIN(bacon) FROM actor WHERE processed = ?"
+    res <- getSingleResult conn query [toSql False]
+    
+    let incomplete = "SELECT COUNT(*) > 0 FROM actor WHERE bacon = ? AND processed = ?"
+    incompleteRes <- getSingleResult conn incomplete [(res!!0), toSql True]
+    
+    let isIncomplete = (fromSql (incompleteRes!!0)::Int) == 1
+    let bacon = fromSql (res!!0)::Bacon
+    
+    -- If the actor processing is incomplete then that is the correct bacon number to be running. If not,
+    -- then we want to check the preceding level of film instead.
+    let baconToProcess = if isIncomplete then bacon else bacon - 1
+    
+    return (baconToProcess, isIncomplete)
+
 
 loadActorsWithBacon :: Bacon -> IO [Actor]
 loadActorsWithBacon bacon = withConnection $ loadActorsWithBacon_ bacon
@@ -50,7 +77,7 @@ loadActorsWithBacon_ bacon conn = do
     
     
 storeActors :: Film -> [Actor] -> IO ()
-storeActors film actors = withConnection $ save film actors
+storeActors film actors = tryWithConnection $ save film actors
 
 
 
@@ -60,7 +87,7 @@ loadFilmsWithBacon bacon = withConnection $ loadFilmsWithBacon_ bacon
 loadFilmsWithBacon_ :: Bacon -> Connection -> IO [Film]
 loadFilmsWithBacon_ bacon conn = do
     putStrLn $ "Loading films with " ++ (pluralize bacon "slice") ++ " of bacon"
-    let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE bacon = ? AND processed = ?"
+    let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE bacon = ? AND processed = ? LIMIT 50000"
     res <- quickQuery' conn query [toSql bacon, toSql False]
 
     return $ map readSql res
@@ -84,10 +111,10 @@ loadUnprocessedFilms_ conn = do
 
 
 storeFilms :: Actor -> [Film] -> IO()
-storeFilms actor films = withConnection $ save actor films
+storeFilms actor films = tryWithConnection $ save actor films
     
 deleteFilm :: Film -> IO()
-deleteFilm film = withConnection $ deleteFilm_ film
+deleteFilm film = tryWithConnection $ deleteFilm_ film
 
 deleteFilm_ :: Film -> Connection -> IO ()
 deleteFilm_ film conn = do
