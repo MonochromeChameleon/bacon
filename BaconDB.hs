@@ -1,4 +1,4 @@
-module BaconDB where
+module BaconDB (getProcessingStatus, loadActorsWithBacon, storeActors, loadFilmsWithBacon, storeFilms, deleteFilm) where
 
 import Control.Concurrent
 import Control.Exception
@@ -27,7 +27,9 @@ withConnection func = do
     return res
 
 
--- | Write-only db connection handler that will handle a locked database and try again after 1 second
+-- | Write-only db connection handler that will handle a locked database and try again after
+-- | a random delay. The delay is random so that the retry attempts don't become synchronized
+-- | and cause a mutual lock.
 tryWithConnection :: (Connection -> IO ()) -> IO ()
 tryWithConnection func = do
     result <- try (withConnection func) :: IO (Either SqlError ())
@@ -40,7 +42,7 @@ tryAgain func = do
     putStrLn "Contention for DB Connection - waiting"
     randomDelay <- randomRIO(100000, 10000000) -- 0.1 to 10 seconds
     threadDelay randomDelay
-    tryWithConnection func
+    tryWithConnection func -- retry
 
     
 getProcessingStatus :: IO (Bacon, Bool)
@@ -90,23 +92,6 @@ loadFilmsWithBacon_ bacon conn = do
     let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE bacon = ? AND processed = ? LIMIT 50000"
     res <- quickQuery' conn query [toSql bacon, toSql False]
 
-    return $ map readSql res
-
-
-
-        
-loadUnprocessedFilms :: IO [Film]
-loadUnprocessedFilms = withConnection loadUnprocessedFilms_
-
-loadUnprocessedFilms_ :: Connection -> IO [Film]
-loadUnprocessedFilms_ conn = do
-    putStrLn "Loading unprocessed films"
-
-    let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE processed = ? ORDER BY year ASC"
-    res <- quickQuery' conn query [toSql False]
-    
-    putStrLn $ "Found " ++ (show $ length res)
-    
     return $ map readSql res
 
 

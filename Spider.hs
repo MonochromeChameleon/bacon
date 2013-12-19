@@ -141,12 +141,20 @@ doCrawlFilm bacon film = do
 -- ============================ --
 
 downloadURL :: String -> IO String
-downloadURL url = do
+downloadURL = tryDownloadURL 0
+
+
+tryDownloadURL :: Integer -> String -> IO String
+tryDownloadURL 4 _ = return ""
+tryDownloadURL attempts url = do
     result <- try (simpleHttp url) :: IO (Either HttpException L.ByteString)
     let e = lefts [result]
     if length e == 0 then do
         let text_bs = head.rights $ [result]
         let html_word8 = L.unpack text_bs :: [Word8]
         return $ bytesToString html_word8 :: IO String
-    else
-        return "" --QQ Handle error -> maybe another table?
+    else do
+        putStrLn $ "Download Error: " ++ url
+        -- Recurse until we get a result. Is this dangerous?
+        tryDownloadURL (attempts + 1) url
+

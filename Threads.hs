@@ -12,14 +12,15 @@ import GHC.Conc (numCapabilities)
 -- | number of cores, index of the core currently executing, and an MVar Boolean flag so that we can detect when processing is complete
 multithread :: (Int -> Int -> MVar Bool -> IO()) -> IO()
 multithread toExecute = do
+    -- Determine the number of available cores for processing
     let cores = numCapabilities
     
-    lock <- newEmptyMVar :: IO (MVar Bool)
-    
     putStrLn "Splitting threads"
+    -- Instigate all available threads, and retrieve a list containing their associated completion flags.
     mvars <- doMultiThread toExecute cores 0
-    putStrLn "All Splat"
+    putStrLn "All threads executing"
     
+    -- Block the main thread until processing is complete on all threads
     readMVars mvars
     putStrLn "DONE"
     
@@ -27,6 +28,7 @@ multithread toExecute = do
 doMultiThread :: (Int -> Int -> MVar Bool -> IO()) -> Int -> Int -> IO [MVar Bool]
 doMultiThread toExecute cores ix | cores <= ix = return []
                                  | otherwise = do
+    -- Recursively kick off all threads, and return an array of their MVar completion flags
     mvar <- createThread (toExecute cores) ix
     mvars <- doMultiThread toExecute cores (ix + 1)
     
