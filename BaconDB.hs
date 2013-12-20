@@ -14,7 +14,7 @@ import StringUtils
 
 
 -- |Wrapper for functions that require a connection to the database - any externally-exposed
--- |functions in this module that use a db connection should simply defer executrion to a 
+-- |functions in this module that use a db connection should simply defer execution to a 
 -- |private function with the connection as its last argument, to be executed by this wrapper 
 -- |function. In turn, that means that we only have a single location in which the connection 
 -- |is ever defined, and we can be confident that it will never be left open.
@@ -45,6 +45,11 @@ tryAgain func = do
     tryWithConnection func -- retry
 
     
+-- | Returns the lowest unprocessed bacon number from the actors table, along with
+-- | a boolean flag indicating whether some of the actors with that bacon number 
+-- | have been processed. If none of those actors have been processed, then we should
+-- | begin processing from the films with bacon number one less than the queried 
+-- | value.
 getProcessingStatus :: IO (Bacon, Bool)
 getProcessingStatus = withConnection getProcessingStatus_
 
@@ -59,13 +64,14 @@ getProcessingStatus_ conn = do
     let isIncomplete = (fromSql (incompleteRes!!0)::Int) == 1
     let bacon = fromSql (res!!0)::Bacon
     
-    -- If the actor processing is incomplete then that is the correct bacon number to be running. If not,
-    -- then we want to check the preceding level of film instead.
+    -- If the actor processing is incomplete then that is the correct bacon number 
+    -- to be running. If not, then we want to check the preceding level of film instead.
     let baconToProcess = if isIncomplete then bacon else bacon - 1
     
     return (baconToProcess, isIncomplete)
 
 
+-- | Returns a batch of up to 50,000 unprocessed actors with the given bacon number.
 loadActorsWithBacon :: Bacon -> IO [Actor]
 loadActorsWithBacon bacon = withConnection $ loadActorsWithBacon_ bacon
 
@@ -77,12 +83,13 @@ loadActorsWithBacon_ bacon conn = do
     
     return $ map readSql res
     
-    
+
+-- | Creates entries in the actor_film table for the given film and actors.    
 storeActors :: Film -> [Actor] -> IO ()
 storeActors film actors = tryWithConnection $ save film actors
 
 
-
+-- | Returns a batch of up to 50,000 unprocessed films with the given bacon number.
 loadFilmsWithBacon :: Bacon -> IO [Film]
 loadFilmsWithBacon bacon = withConnection $ loadFilmsWithBacon_ bacon
 
@@ -95,9 +102,11 @@ loadFilmsWithBacon_ bacon conn = do
     return $ map readSql res
 
 
+-- | Creates entries in the actor_film table for the given actor and films.
 storeFilms :: Actor -> [Film] -> IO()
 storeFilms actor films = tryWithConnection $ save actor films
     
+-- | Deletes all references to the provided film within the film and actor_film tables.
 deleteFilm :: Film -> IO()
 deleteFilm film = tryWithConnection $ deleteFilm_ film
 
@@ -109,8 +118,8 @@ deleteFilm_ film conn = do
     putStrLn "All gone. Lovely."
 
         
+-- | Utility function to return the first value from a query.
 getSingleResult :: Connection -> String -> [SqlValue] -> IO [SqlValue]
 getSingleResult conn query params = do
     res <- quickQuery' conn query params
     return (res!!0)
-    

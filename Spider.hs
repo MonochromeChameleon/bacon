@@ -7,7 +7,6 @@ import Data.Word
 import Data.Either
 import Control.Exception
 import qualified Data.ByteString.Lazy as L
-import GHC.Conc (numCapabilities)
 
 import BaconDB
 import DataModel
@@ -20,8 +19,6 @@ import Threads
 crawl :: Int -> IO()
 crawl maxBacon = do
 
-    putStrLn $ "Processing with " ++ (show numCapabilities) ++ " cores"
-    
     processingStatus <- getProcessingStatus
     
     if (snd processingStatus) then
@@ -51,7 +48,6 @@ loadAndCrawlActors bacon maxBacon | bacon >= maxBacon = return ()
         
 threadedCrawlActors :: Int -> [Actor] -> Int -> Int -> MVar Bool -> IO()
 threadedCrawlActors bacon actors cores ix sync = do
-    putStrLn $ "Crawling on core " ++ (show $ ix + 1) ++ " of " ++ (show cores)
     let numToProcess = (div (length actors) cores) + 1
     let dropped = drop (numToProcess * ix) actors
     let actorsToProcess = take numToProcess dropped
@@ -97,7 +93,6 @@ loadAndCrawlFilms bacon maxBacon | bacon >= maxBacon = return ()
         
 threadedCrawlFilms :: Int -> [Film] -> Int -> Int -> MVar Bool -> IO()
 threadedCrawlFilms bacon films cores ix sync = do
-    putStrLn $ "Crawling on core " ++ (show $ ix + 1) ++ " of " ++ (show cores)
     let numToProcess = (div (length films) cores) + 1
     let dropped = drop (numToProcess * ix) films
     let filmsToProcess = take numToProcess dropped
@@ -157,4 +152,3 @@ tryDownloadURL attempts url = do
         putStrLn $ "Download Error: " ++ url
         -- Recurse until we get a result. Is this dangerous?
         tryDownloadURL (attempts + 1) url
-

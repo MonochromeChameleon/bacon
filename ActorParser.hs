@@ -83,12 +83,12 @@ notYear _ = True
 
 -- Check for a tag with id starting "filmo-head-act"
 notActorHeader :: Tag String -> Bool
-notActorHeader (TagOpen tag atts) = length (filter (\x -> fst x == "id" && (startsWith "filmo-head-act" $ snd x)) atts) == 0
+notActorHeader (TagOpen tag atts) = length (filter (\x -> fst x == "id" && (isPrefixOf "filmo-head-act" $ snd x)) atts) == 0
 notActorHeader _ = True
 
 -- Check for any tag with id starting "filmo-head-"
 notHeader :: Tag String -> Bool
-notHeader (TagOpen tag atts) = length (filter (\x -> fst x == "id" && (startsWith "filmo-head-" $ snd x)) atts) == 0
+notHeader (TagOpen tag atts) = length (filter (\x -> fst x == "id" && (isPrefixOf "filmo-head-" $ snd x)) atts) == 0
 notHeader _ = True
 
 -- Check for any tag with class "filmo-category-section"
@@ -103,14 +103,14 @@ notLink _ = True
          
 -- Check for an opening tag with class "filmo-row"   
 notRow :: Tag String -> Bool
-notRow (TagOpen tag atts) = length (filter (\x -> fst x == "class" && (startsWith "filmo-row" $ snd x)) atts) == 0
+notRow (TagOpen tag atts) = length (filter (\x -> fst x == "class" && (isPrefixOf "filmo-row" $ snd x)) atts) == 0
 notRow _ = True
 
 notTVEtcRow :: [Tag String] -> Bool
 notTVEtcRow tags = length (filter isTVTag tags) == 0
 
 isTVTag :: Tag String -> Bool
-isTVTag (TagText txt) = elem lowerText ["(tv series)", "(video short)", "(tv mini-series)", "(short)", "(tv movie)", "(video)", "(scenes deleted)", "(video game)", "(tv short)"] || endsWith "(uncredited)" lowerText
+isTVTag (TagText txt) = elem lowerText ["(tv series)", "(video short)", "(tv mini-series)", "(short)", "(tv movie)", "(video)", "(scenes deleted)", "(video game)", "(tv short)"] || isSuffixOf "(uncredited)" lowerText
     where lowerText = trim $ map toLower txt
 isTVTag _ = False
 

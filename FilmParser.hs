@@ -83,7 +83,7 @@ getContent _ = ""
 -- Filtering functions for finding our tags of interest
 
 isCreditedCastRow :: [Tag String] -> Bool
-isCreditedCastRow tags = length (dropWhile notCastCell tags) > 0 && length (filter (\x -> endsWith "(uncredited)" $ trim $ getContent x) tags) == 0
+isCreditedCastRow tags = length (dropWhile notCastCell tags) > 0 && length (filter (\x -> isSuffixOf "(uncredited)" $ trim $ getContent x) tags) == 0
 
 notCastCell :: Tag String -> Bool
 notCastCell (TagOpen tag atts) = length (filter (\x -> fst x == "itemprop" && (snd x == "actor")) atts) == 0
