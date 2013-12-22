@@ -1,21 +1,25 @@
-module ActorParser where --(getFilmographyDetails) where
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+module ActorParser(parseActor) where
 
 import Text.HTML.TagSoup
 import Data.List
 import Data.Char
+import Data.Text(strip, pack, unpack)
 
 import DataModel
 import StringUtils
+import Parser
 
--- Only one public method: getFilmographyDetails, which parses an html page into a list of (film name, url) tuples
+data ActorParser = ActorParser
 
-getFilmographyDetails :: Bacon -> String -> [Film]
-getFilmographyDetails bacon html = filmDetails
-    where tags        = parseTags html          -- TagSoup parsing
-          filmography = filmographyTags tags    -- Get rid of anything that isn't the acting filmography section (i.e. not director, soundtrack etc.)
-          rows        = groupByRows filmography -- Group the filmography into rows
-          filmRows    = filter notTVEtcRow rows -- Remove TV Shows and suchlike (they have big casts and it just gets too huge!)
-          filmDetails = map (parseRow bacon) filmRows   -- Parse our rows into the necessary details
+instance EntityParser ActorParser Film where
+    filterTags _ = filmographyTags
+    filterRows _ = (filter notTVEtcRow)
+    parseRow _ = doParseRow
+    notRow _ = isNotRow
+
+parseActor :: Bacon -> String -> [Film]
+parseActor = processHTML ActorParser
 
           
 -- Private methods
@@ -32,27 +36,17 @@ filmographyTags tags = rowTags
     where tagsFromHeaderOnwards = dropWhile notActorHeader tags                   -- Find the appropriate header
           tagsFromFilmographyOnwards = dropWhile notSection tagsFromHeaderOnwards -- Find the corresponding content section
           filmographyTags = takeWhile notHeader $ dropWhile (not.notHeader) tagsFromFilmographyOnwards -- Get the content between headers
-          rowTags = dropWhile notRow filmographyTags                              -- Cleanup so that we start on a row
-
-
--- The filmography is split into divs with class "filmo-row odd" and "filmo-row even". This function
--- takes a list of tags and groups those tags by the row that they are contained in
-groupByRows :: [Tag String] -> [[Tag String]]
-groupByRows tags = doGroup [] tags
-
-
--- Use recursive descent parsing to get the rows from our tag list
-doGroup :: [[Tag String]] -> [Tag String] -> [[Tag String]]
-doGroup groups [] = groups
-doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
-   where (newGroup, rest) = span notRow tags
+          rowTags = dropWhile isNotRow filmographyTags                              -- Cleanup so that we start on a row
 
 
 
-parseRow :: Bacon -> [Tag String] -> Film
-parseRow bc tags = Film { title = filmName, year = yr, film_details = details }
+
+
+
+doParseRow :: Bacon -> [Tag String] -> Film
+doParseRow bc tags = Film { title = filmName, year = yr, film_details = details }
     where yearTags = dropWhile notYear tags
-          yr = parseYear $ trim $ getContent $ yearTags!!1
+          yr = parseYear $ (unpack.strip.pack) $ getContent $ yearTags!!1
           tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
           url = getLink $ tagsOfInterest!!0         -- URL comes first
           filmName = getContent $ (dropWhile notTagText tagsOfInterest)!!0 -- Name of the film is the text node inside the <a>tag
@@ -102,15 +96,15 @@ notLink (TagOpen tag _) = tag /= "a"
 notLink _ = True
          
 -- Check for an opening tag with class "filmo-row"   
-notRow :: Tag String -> Bool
-notRow (TagOpen tag atts) = length (filter (\x -> fst x == "class" && (isPrefixOf "filmo-row" $ snd x)) atts) == 0
-notRow _ = True
+isNotRow :: Tag String -> Bool
+isNotRow (TagOpen tag atts) = length (filter (\x -> fst x == "class" && (isPrefixOf "filmo-row" $ snd x)) atts) == 0
+isNotRow _ = True
 
 notTVEtcRow :: [Tag String] -> Bool
 notTVEtcRow tags = length (filter isTVTag tags) == 0
 
 isTVTag :: Tag String -> Bool
 isTVTag (TagText txt) = elem lowerText ["(tv series)", "(video short)", "(tv mini-series)", "(short)", "(tv movie)", "(video)", "(scenes deleted)", "(video game)", "(tv short)"] || isSuffixOf "(uncredited)" lowerText
-    where lowerText = trim $ map toLower txt
+    where lowerText = (unpack.strip.pack) $ map toLower txt
 isTVTag _ = False
 

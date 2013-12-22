@@ -26,8 +26,9 @@ main = do
     args <- getArgs
     case args of
         ["initialize"] -> do 
-		createDB	
-        	seed kevin
+            createDB
+            seed kevin
+            return ()
         ["crawl", maxBacon] -> crawl (read maxBacon::Int)
         _ -> syntaxError
 

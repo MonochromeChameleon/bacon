@@ -1,20 +1,26 @@
-module FilmParser where
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+module FilmParser(parseFilm, checkAdultStatus) where
 
 import Text.HTML.TagSoup
 import Data.List
+import Data.Text(strip, pack, unpack)
 
 import DataModel
+import Parser
 import StringUtils
 
--- Only one public method: getCastDetails, which parses an html page into a list of (name, url) tuples
+data FilmParser = FilmParser
 
-getCastDetails :: Bacon -> String -> [Actor]
-getCastDetails bacon html = castDetails
-    where tags        = parseTags html        -- TagSoup parsing
-          cast        = castTags tags         -- Get rid of anything that isn't the cast section (i.e. not production crew etc.)
-          rows        = groupByRows cast      -- Group the filmography into rows
-          filtered    = filter isCreditedCastRow rows -- Some of the rows don't actually contain cast details, and we skip uncredited roles
-          castDetails = map (parseRow bacon) filtered -- Parse our rows into the necessary details
+instance EntityParser FilmParser Actor where
+    filterTags _ = castTags
+    filterRows _ = (filter isCreditedCastRow)
+    parseRow _ = doParseRow
+    notRow _ = isNotRow
+    
+parseFilm :: Bacon -> String -> [Actor]
+parseFilm = processHTML FilmParser
+
+-- Only one public method: getCastDetails, which parses an html page into a list of (name, url) tuples
 
 checkAdultStatus :: String -> Bool
 checkAdultStatus html = doCheckAdultStatus tags
@@ -44,27 +50,14 @@ notGenreTag (TagOpen tag atts) = tag /= "span" || length (filter (\x -> fst x ==
 notGenreTag _ = True
 
 castTags :: [Tag String] -> [Tag String]
-castTags tags = rowTags --QQ This might be the error
+castTags tags = rowTags
     where tagsFromCastOnwards = dropWhile notCast tags                -- Find the start of the cast table
           castTags = takeWhile notEndTable $ drop 1 tagsFromCastOnwards -- Drop the tail from the content of interest
-          rowTags = dropWhile notRow castTags                         -- Cleanup so that we start on a row
+          rowTags = dropWhile isNotRow castTags                         -- Cleanup so that we start on a row
 
 
--- The filmography is split into divs with class "filmo-row odd" and "filmo-row even". This function
--- takes a list of tags and groups those tags by the row that they are contained in
-groupByRows :: [Tag String] -> [[Tag String]]
-groupByRows tags = doGroup [] tags
-
-
--- Use recursive descent parsing to get the rows from our tag list
-doGroup :: [[Tag String]] -> [Tag String] -> [[Tag String]]
-doGroup groups [] = groups
-doGroup groups (tag:tags) = doGroup (newGroup:groups) rest
-   where (newGroup, rest) = span notRow tags
-
-
-parseRow :: Bacon -> [Tag String] -> Actor
-parseRow bn tags = Actor { name = nm, actor_details = details }
+doParseRow :: Bacon -> [Tag String] -> Actor
+doParseRow bn tags = Actor { name = nm, actor_details = details }
     where tagsOfInterest = dropWhile notLink $ dropWhile notCastCell tags -- Drop everything up to the hyperlink
           url = getLink $ tagsOfInterest!!0     -- URL comes first
           nm = getContent $ tagsOfInterest!!3 -- Name of the person is the text node inside the <span> in the <a>tag
@@ -83,7 +76,7 @@ getContent _ = ""
 -- Filtering functions for finding our tags of interest
 
 isCreditedCastRow :: [Tag String] -> Bool
-isCreditedCastRow tags = length (dropWhile notCastCell tags) > 0 && length (filter (\x -> isSuffixOf "(uncredited)" $ trim $ getContent x) tags) == 0
+isCreditedCastRow tags = length (dropWhile notCastCell tags) > 0 && length (filter (\x -> isSuffixOf "(uncredited)" $ (unpack.strip.pack) $ getContent x) tags) == 0
 
 notCastCell :: Tag String -> Bool
 notCastCell (TagOpen tag atts) = length (filter (\x -> fst x == "itemprop" && (snd x == "actor")) atts) == 0
@@ -97,9 +90,9 @@ notEndTable :: Tag String -> Bool
 notEndTable (TagClose "table") = False
 notEndTable _ = True
 
-notRow :: Tag String -> Bool
-notRow (TagOpen "tr" atts) = False
-notRow _ = True
+isNotRow :: Tag String -> Bool
+isNotRow (TagOpen "tr" atts) = False
+isNotRow _ = True
 
 -- Check for an anchor tag
 notLink :: Tag String -> Bool

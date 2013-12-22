@@ -1,4 +1,4 @@
-module Spider where
+module Spider (crawl) where
 
 import Language.Haskell.TH.Ppr -- cabal install template-haskell
 import Network.HTTP.Conduit -- cabal install http-conduit
@@ -14,8 +14,9 @@ import ActorParser
 import FilmParser
 import StringUtils
 import Threads
+import Parser
 
--- Decides what stage we had reached previously, and calls our next crawl operation
+-- | Decides what stage we had reached previously, and calls our next crawl operation
 crawl :: Int -> IO()
 crawl maxBacon = do
 
@@ -31,8 +32,8 @@ crawl maxBacon = do
 -- == ACTOR PAGE CRAWLING & PARSING == --
 -- =================================== --
 
--- Here we look up all unprocessed actors of the appropriate bacon level, fetch their filmographies
--- and then call through to crawl the films
+-- | Here we look up all unprocessed actors of the appropriate bacon level, fetch their filmographies
+-- | and then call through to crawl the films
 loadAndCrawlActors :: Bacon -> Int -> IO()
 loadAndCrawlActors bacon maxBacon | bacon >= maxBacon = return ()
                                   | otherwise = do
@@ -46,6 +47,8 @@ loadAndCrawlActors bacon maxBacon | bacon >= maxBacon = return ()
         multithread $ threadedCrawlActors bacon actors
         loadAndCrawlActors bacon maxBacon
         
+
+-- | Multithread-enabled actor crawler (can also be run on a single thread)
 threadedCrawlActors :: Int -> [Actor] -> Int -> Int -> MVar Bool -> IO()
 threadedCrawlActors bacon actors cores ix sync = do
     let numToProcess = (div (length actors) cores) + 1
@@ -68,7 +71,7 @@ crawlActors bacon (actor:actors) = do
 doCrawlActor :: Bacon -> Actor -> IO ()
 doCrawlActor bacon actor = do
     actorPage <- downloadURL $ actorUrl actor
-    let films = getFilmographyDetails bacon actorPage
+    let films = parseActor bacon actorPage
     putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor)
     storeFilms actor films
 
@@ -76,8 +79,8 @@ doCrawlActor bacon actor = do
 -- == FILM PAGE CRAWLING & PARSING == --
 -- ================================== --
 
--- Here we look up all unprocessed films, ordered by release date (ASC) and process their
--- cast lists, before calling through to crawl the newly-found actors
+-- | Here we look up all unprocessed films, ordered by release date (ASC) and process their
+-- | cast lists, before calling through to crawl the newly-found actors
 loadAndCrawlFilms :: Bacon -> Int -> IO()
 loadAndCrawlFilms bacon maxBacon | bacon >= maxBacon = return ()
                                  | otherwise = do
@@ -90,7 +93,8 @@ loadAndCrawlFilms bacon maxBacon | bacon >= maxBacon = return ()
         multithread $ threadedCrawlFilms (bacon + 1) films
         loadAndCrawlFilms bacon maxBacon
         
-        
+
+-- | Multithread-enabled film crawler (can also be run on a single thread)        
 threadedCrawlFilms :: Int -> [Film] -> Int -> Int -> MVar Bool -> IO()
 threadedCrawlFilms bacon films cores ix sync = do
     let numToProcess = (div (length films) cores) + 1
@@ -124,7 +128,7 @@ doCrawlFilm bacon film = do
         return ()
     else do
         castPage <- downloadURL $ fullCastUrl film
-        let actors = getCastDetails bacon castPage
+        let actors = parseFilm bacon castPage
         
         putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with " ++ (pluralize bacon "slice") ++ " of bacon"
     
@@ -139,6 +143,9 @@ downloadURL :: String -> IO String
 downloadURL = tryDownloadURL 0
 
 
+-- Retries a failed download up to three additional times before bailing out and returning
+-- an empty string. Uses ByteString processing to optimize the request/response processing
+-- time.
 tryDownloadURL :: Integer -> String -> IO String
 tryDownloadURL 4 _ = return ""
 tryDownloadURL attempts url = do
