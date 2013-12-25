@@ -28,7 +28,6 @@ main = do
         ["initialize"] -> do 
             createDB
             seed kevin
-            return ()
         ["crawl", maxBacon] -> crawl (read maxBacon::Int)
         _ -> syntaxError
 

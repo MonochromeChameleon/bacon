@@ -1,3 +1,8 @@
+-- | Abstracts the actual database connection away from those classes where database access 
+-- | is being triggered. This is the only file that should reference Database.HDBC.Sqlite3
+-- | as that's a concrete implementation rather than the generic one that we ought to use
+-- | everywhere else in the codebase.
+
 module DatabaseConnector(withConnection, tryWithConnection) where
 
 import Control.Concurrent

@@ -3,7 +3,6 @@ module Schema(createDB, seed) where
 import Database.HDBC
 
 import DatabaseConnector
-import DataModel
 import ORM
 
 createDB :: IO ()
@@ -15,10 +14,5 @@ createDB_ :: IConnection c => String -> c -> IO()
 createDB_ schema conn = runRaw conn schema
     
 
-seed :: Actor -> IO Integer
-seed actor = withConnection $ seed_ actor
-    
-seed_ :: IConnection c => Actor -> c -> IO Integer
-seed_ actor conn = do
-    stmt <- prepare conn $ saveQuery actor
-    execute stmt $ asSql actor
+seed :: Entity a => a -> IO()
+seed entity = withConnection $ insert entity

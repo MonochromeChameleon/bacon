@@ -6,28 +6,35 @@ import Text.HTML.TagSoup
 import DataModel
 import ORM
 
+ 
+getContent :: Tag String -> String
+getContent (TagText txt) = txt -- Get the text content of the node
+getContent _ = ""
+
+-- | Recursively applies filters to a list of tags
+filterTags :: [([Tag String] -> [Tag String])] -> [Tag String] -> [Tag String]
+filterTags [] tags = tags
+filterTags (f:filts) tags = filterTags filts (f tags)
+
+groupByRows :: (Tag String -> Bool) -> [Tag String] -> [[Tag String]]
+groupByRows groupFunc tags = doGroup groupFunc [] tags
+
+doGroup :: (Tag String -> Bool) -> [[Tag String]] -> [Tag String] -> [[Tag String]]
+doGroup func groups tags = doGroup func (newGroup:groups) rest --QQ (tag:tags???)
+    where (newGroup, rest) = span func tags
+
 class (Entity e) => EntityParser p e | p -> e where
     processHTML :: p -> Bacon -> String -> [e]
     processHTML parser bacon html  = details
         where tags           = parseTags html
-              tagsOfInterest = filterTags parser tags
-              rows           = groupByRows parser tagsOfInterest
-              rowsOfInterest = filterRows parser rows
+              tagsOfInterest = filterTags (tagFilters parser) tags
+              rows           = groupByRows (notRow parser) tagsOfInterest
+              rowsOfInterest = filter (filterRows parser) rows
               details        = map (parseRow parser bacon) rowsOfInterest
               
-    filterTags :: p -> [Tag String]   -> [Tag String]
-    filterRows :: p -> [[Tag String]] -> [[Tag String]]
+    filterRows :: p -> [Tag String] -> Bool
     parseRow :: p -> Bacon -> [Tag String] -> e
     notRow :: p -> Tag String -> Bool
-
-
-    -- Takes a list of tags and groups those tags by the row that they are contained in
-    groupByRows :: p -> [Tag String] -> [[Tag String]]
-    groupByRows self tags = doGroup self [] tags
-
-
-    -- Use recursive descent parsing to get the rows from our tag list
-    doGroup :: p -> [[Tag String]] -> [Tag String] -> [[Tag String]]
-    doGroup _ groups [] = groups
-    doGroup self groups (tag:tags) = doGroup self (newGroup:groups) rest
-        where (newGroup, rest) = span (notRow self) tags
+    
+    tagFilters :: p -> [([Tag String] -> [Tag String])]    
+    

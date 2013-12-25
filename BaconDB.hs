@@ -6,7 +6,6 @@ import DatabaseConnector
 import DataModel
 import ORM
 import Schema
-import StringUtils
 
 
 -- | Returns the lowest unprocessed bacon number from the actors table, along with
@@ -41,7 +40,6 @@ loadActorsWithBacon bacon = withConnection $ loadActorsWithBacon_ bacon
 
 loadActorsWithBacon_ :: IConnection c => Bacon -> c -> IO [Actor]
 loadActorsWithBacon_ bacon conn = do
-    putStrLn $ "Loading actors with " ++ (pluralize bacon "slice") ++ " of bacon"
     let query = "SELECT " ++ (allColumns dummyActor) ++ " FROM actor WHERE bacon = ? AND processed = ? LIMIT 50000"
     res <- quickQuery' conn query [toSql bacon, toSql False]
     
@@ -50,7 +48,7 @@ loadActorsWithBacon_ bacon conn = do
 
 -- | Creates entries in the actor_film table for the given film and actors.    
 storeActors :: Film -> [Actor] -> IO ()
-storeActors film actors = tryWithConnection $ save film actors
+storeActors film actors = tryWithConnection $ processingResult film actors
 
 
 -- | Returns a batch of up to 50,000 unprocessed films with the given bacon number.
@@ -59,7 +57,6 @@ loadFilmsWithBacon bacon = withConnection $ loadFilmsWithBacon_ bacon
 
 loadFilmsWithBacon_ :: IConnection c => Bacon -> c -> IO [Film]
 loadFilmsWithBacon_ bacon conn = do
-    putStrLn $ "Loading films with " ++ (pluralize bacon "slice") ++ " of bacon"
     let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE bacon = ? AND processed = ? LIMIT 50000"
     res <- quickQuery' conn query [toSql bacon, toSql False]
 
@@ -68,7 +65,7 @@ loadFilmsWithBacon_ bacon conn = do
 
 -- | Creates entries in the actor_film table for the given actor and films.
 storeFilms :: Actor -> [Film] -> IO()
-storeFilms actor films = tryWithConnection $ save actor films
+storeFilms actor films = tryWithConnection $ processingResult actor films
     
 -- | Deletes all references to the provided film within the film and actor_film tables.
 deleteFilm :: Film -> IO()
@@ -76,10 +73,9 @@ deleteFilm film = tryWithConnection $ deleteFilm_ film
 
 deleteFilm_ :: IConnection c => Film -> c -> IO ()
 deleteFilm_ film conn = do
-    putStrLn "Deleting this naughty film"
     run conn "DELETE FROM film WHERE film_id = ?" [toSql $ imdbid film]
     run conn "DELETE FROM actor_film WHERE film_id = ?" [toSql $ imdbid film]
-    putStrLn "All gone. Lovely."
+    return ()
 
         
 -- | Utility function to return the first value from a query.

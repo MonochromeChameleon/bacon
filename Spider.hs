@@ -1,20 +1,14 @@
 module Spider (crawl) where
 
-import Language.Haskell.TH.Ppr -- cabal install template-haskell
-import Network.HTTP.Conduit -- cabal install http-conduit
 import Control.Concurrent
-import Data.Word
-import Data.Either
-import Control.Exception
-import qualified Data.ByteString.Lazy as L
 
 import BaconDB
 import DataModel
 import ActorParser
 import FilmParser
-import StringUtils
 import Threads
 import Parser
+import URLDownloader
 
 -- | Decides what stage we had reached previously, and calls our next crawl operation
 crawl :: Int -> IO()
@@ -37,6 +31,7 @@ crawl maxBacon = do
 loadAndCrawlActors :: Bacon -> Int -> IO()
 loadAndCrawlActors bacon maxBacon | bacon >= maxBacon = return ()
                                   | otherwise = do
+    putStrLn $ "Loading actors with " ++ (pluralize bacon "slice") ++ " of bacon"
     actors <- loadActorsWithBacon bacon
     
     if length actors == 0 then do
@@ -74,6 +69,7 @@ doCrawlActor bacon actor = do
     let films = parseActor bacon actorPage
     putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor)
     storeFilms actor films
+    putStrLn $ "Stored " ++ (pluralize (length films) ("new films"))
 
 -- ================================== --
 -- == FILM PAGE CRAWLING & PARSING == --
@@ -84,6 +80,7 @@ doCrawlActor bacon actor = do
 loadAndCrawlFilms :: Bacon -> Int -> IO()
 loadAndCrawlFilms bacon maxBacon | bacon >= maxBacon = return ()
                                  | otherwise = do
+    putStrLn $ "Loading films with " ++ (pluralize bacon "slice") ++ " of bacon"
     films <- loadFilmsWithBacon bacon
     if length films == 0 then do
         putStrLn "Finished loading films"
@@ -123,8 +120,9 @@ doCrawlFilm bacon film = do
     let isAdult = checkAdultStatus filmPage
     
     if isAdult then do
-        putStrLn "THIS IS RUDE!!!!"
+        putStrLn "Deleting adult film"
         deleteFilm film
+        putStrLn "Deleted"
         return ()
     else do
         castPage <- downloadURL $ fullCastUrl film
@@ -133,29 +131,10 @@ doCrawlFilm bacon film = do
         putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with " ++ (pluralize bacon "slice") ++ " of bacon"
     
         storeActors film actors
+        
+        putStrLn $ "Stored " ++ (pluralize (length actors) ("new actors"))
+        
 
-
--- ============================ --
--- == PAGE DOWNLOAD FUNCTION == --
--- ============================ --
-
-downloadURL :: String -> IO String
-downloadURL = tryDownloadURL 0
-
-
--- Retries a failed download up to three additional times before bailing out and returning
--- an empty string. Uses ByteString processing to optimize the request/response processing
--- time.
-tryDownloadURL :: Integer -> String -> IO String
-tryDownloadURL 4 _ = return ""
-tryDownloadURL attempts url = do
-    result <- try (simpleHttp url) :: IO (Either HttpException L.ByteString)
-    let e = lefts [result]
-    if length e == 0 then do
-        let text_bs = head.rights $ [result]
-        let html_word8 = L.unpack text_bs :: [Word8]
-        return $ bytesToString html_word8 :: IO String
-    else do
-        putStrLn $ "Download Error: " ++ url
-        -- Recurse until we get a result. Is this dangerous?
-        tryDownloadURL (attempts + 1) url
+        
+pluralize :: Int -> String -> String
+pluralize count str = (show count) ++ " " ++ (if count == 1 then str else str ++ "s")

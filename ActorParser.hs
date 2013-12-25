@@ -7,40 +7,29 @@ import Data.Char
 import Data.Text(strip, pack, unpack)
 
 import DataModel
-import StringUtils
 import Parser
 
 data ActorParser = ActorParser
 
 instance EntityParser ActorParser Film where
-    filterTags _ = filmographyTags
-    filterRows _ = (filter notTVEtcRow)
+    filterRows _ = notTVEtcRow
     parseRow _ = doParseRow
     notRow _ = isNotRow
+    
+    {-  Filters required to retrieve the part of the html page that we are interested in, from an input list of 
+    TagSoup tags. We can drop everything up until we reach '<div id="filmo-head-act' (which may be actor or 
+    actress, hence the incomplete tag search), and then we are interested in the next
+    <div class="filmo-category-section">. The logic, therefore, is:
+    - Drop all tags up to the one whose id begins "filmo-head-act"
+    - Then drop all tags up to the next with class "filmo-category-section"
+    - Then keep all tags up until the next with id beginning "filmo-head"  -}
+    tagFilters _ = [dropWhile notActorHeader, dropWhile notSection, dropWhile (not.notHeader), takeWhile notHeader, dropWhile isNotRow]
 
 parseActor :: Bacon -> String -> [Film]
 parseActor = processHTML ActorParser
 
           
 -- Private methods
-
-{-  Retrieves the part of the html page that we are interested in, from an input list of TagSoup tags. We can drop
-everything up until we reach '<div id="filmo-head-act' (which may be actor or actress, hence the incomplete tag
-search), and then we are interested in the next <div class="filmo-category-section">. The logic, therefore, is:
-- Drop all tags up to the one whose id begins "filmo-head-act"
-- Then drop all tags up to the next with class "filmo-category-section"
-- Then keep all tags up until the next with id beginning "filmo-head"  -}
-
-filmographyTags :: [Tag String] -> [Tag String]
-filmographyTags tags = rowTags
-    where tagsFromHeaderOnwards = dropWhile notActorHeader tags                   -- Find the appropriate header
-          tagsFromFilmographyOnwards = dropWhile notSection tagsFromHeaderOnwards -- Find the corresponding content section
-          filmographyTags = takeWhile notHeader $ dropWhile (not.notHeader) tagsFromFilmographyOnwards -- Get the content between headers
-          rowTags = dropWhile isNotRow filmographyTags                              -- Cleanup so that we start on a row
-
-
-
-
 
 
 doParseRow :: Bacon -> [Tag String] -> Film
@@ -60,9 +49,6 @@ parseYear str = read (take 4 str)::Year
 getLink :: Tag String -> String
 getLink (TagOpen "a" atts) = snd $ (filter (\x -> fst x == "href") atts)!!0 -- Get the content of the href attribute
  
-getContent :: Tag String -> String
-getContent (TagText txt) = txt -- Get the text content of the node
-
 
 
 -- Filtering functions for finding our tags of interest

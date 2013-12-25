@@ -2,7 +2,6 @@ import System.ShQQ
 import System.Cmd
 import Data.List
 import Data.Time
-import StringUtils
 
 main = do
     killProcess
