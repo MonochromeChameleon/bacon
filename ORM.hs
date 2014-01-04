@@ -22,7 +22,7 @@ class Eq a => Entity a where
         newValues <- findNew conn values
         
         saveMany conn newValues
-        connect conn source values
+        connect conn source newValues
         processed conn source
         
         return ()
