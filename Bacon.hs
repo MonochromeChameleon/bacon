@@ -41,6 +41,5 @@ main = do
 syntaxError :: IO()
 syntaxError = putStrLn 
   "Usage: bacon [args]\n\
-  \n\
   \initialize       Create and seed a database\n\
   \crawl max        Crawl from your seed reference to the specified level of connection"
