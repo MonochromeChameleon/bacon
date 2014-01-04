@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-module ActorParser(parseActor) where
+module ActorParser where--(parseActor) where
 
 import Text.HTML.TagSoup
 import Data.List

@@ -9,6 +9,7 @@ import FilmParser
 import Threads
 import Parser
 import URLDownloader
+import ORM
 
 -- | Decides what stage we had reached previously, and calls our next crawl operation
 crawl :: Int -> IO()
@@ -32,7 +33,7 @@ loadAndCrawlActors :: Bacon -> Int -> IO()
 loadAndCrawlActors bacon maxBacon | bacon >= maxBacon = return ()
                                   | otherwise = do
     putStrLn $ "Loading actors with " ++ (pluralize bacon "slice") ++ " of bacon"
-    actors <- loadActorsWithBacon bacon
+    actors <- loadEntitiesWithBacon ActorType bacon
     
     if length actors == 0 then do
         putStrLn "Finished loading actors"
@@ -50,26 +51,18 @@ threadedCrawlActors bacon actors cores ix sync = do
     let dropped = drop (numToProcess * ix) actors
     let actorsToProcess = take numToProcess dropped
     
-    crawlActors bacon actorsToProcess
+    crawlEntities bacon actorsToProcess
     
-    putMVar sync True 
+    putMVar sync True     
     
-    
--- Recursively crawl all the supplied actors
-crawlActors :: Bacon -> [Actor] -> IO ()
-crawlActors _ [] = return ()
-crawlActors bacon (actor:actors) = do
-    doCrawlActor bacon actor
-    crawlActors bacon actors
+-- Recursively crawl all the supplied entities, storing any new actors found in the casts
+-- of those films.
+crawlEntities :: Crawl a => Bacon -> [a] -> IO ()
+crawlEntities _ [] = return ()
+crawlEntities bacon (e:es) = do
+    doCrawl bacon e
+    crawlEntities bacon es
 
--- Crawl an individual actor page, storing any new films in their filmography
-doCrawlActor :: Bacon -> Actor -> IO ()
-doCrawlActor bacon actor = do
-    actorPage <- downloadURL $ actorUrl actor
-    let films = parseActor bacon actorPage
-    putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor)
-    storeFilms actor films
-    putStrLn $ "Stored " ++ (pluralize (length films) ("new films"))
 
 -- ================================== --
 -- == FILM PAGE CRAWLING & PARSING == --
@@ -81,7 +74,7 @@ loadAndCrawlFilms :: Bacon -> Int -> IO()
 loadAndCrawlFilms bacon maxBacon | bacon >= maxBacon = return ()
                                  | otherwise = do
     putStrLn $ "Loading films with " ++ (pluralize bacon "slice") ++ " of bacon"
-    films <- loadFilmsWithBacon bacon
+    films <- loadEntitiesWithBacon FilmType bacon
     if length films == 0 then do
         putStrLn "Finished loading films"
         loadAndCrawlActors (bacon + 1) maxBacon
@@ -98,43 +91,37 @@ threadedCrawlFilms bacon films cores ix sync = do
     let dropped = drop (numToProcess * ix) films
     let filmsToProcess = take numToProcess dropped
     
-    crawlFilms bacon filmsToProcess
+    crawlEntities bacon filmsToProcess
     
     putMVar sync True
-
-
--- Recursively crawl all the supplied films, storing any new actors found in the casts
--- of those films.
-crawlFilms :: Bacon -> [Film] -> IO ()
-crawlFilms _ [] = return ()
-crawlFilms bacon (film:films) = do
-    doCrawlFilm bacon film
-    crawlFilms bacon films
-
-
--- Crawl an individual film page, first checking for adult films and removing 
--- them, and returning the cast list for any other films
-doCrawlFilm :: Bacon -> Film -> IO ()
-doCrawlFilm bacon film = do
-    filmPage <- downloadURL $ filmUrl film
-    let isAdult = checkAdultStatus filmPage
-    
-    if isAdult then do
-        putStrLn "Deleting adult film"
-        deleteFilm film
-        putStrLn "Deleted"
-        return ()
-    else do
-        castPage <- downloadURL $ fullCastUrl film
-        let actors = parseFilm bacon castPage
-        
-        putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with " ++ (pluralize bacon "slice") ++ " of bacon"
-    
-        storeActors film actors
-        
-        putStrLn $ "Stored " ++ (pluralize (length actors) ("new actors"))
         
 
         
 pluralize :: Int -> String -> String
 pluralize count str = (show count) ++ " " ++ (if count == 1 then str else str ++ "s")
+
+instance Crawl Film where
+    -- Crawl an individual film page, first checking for adult films and removing 
+    -- them, and returning the cast list for any other films
+    doCrawl bacon film = do
+        filmPage <- downloadURL $ filmUrl film
+        let isAdult = checkAdultStatus filmPage
+        
+        if isAdult then do
+            putStrLn "Deleting adult film"
+            delete film
+            putStrLn "Deleted"
+            return ()
+        else do
+            castPage <- downloadURL $ fullCastUrl film
+            let actors = parseFilm bacon castPage
+            putStrLn $ "Found " ++ (show $ length actors) ++ " actors for " ++ (title film) ++ " with " ++ (pluralize bacon "slice") ++ " of bacon"
+            storeProcessingResult film actors
+            
+instance Crawl Actor where
+    -- Crawl an individual actor page, returning their filmographies
+    doCrawl bacon actor = do
+        actorPage <- downloadURL $ actorUrl actor
+        let films = parseActor bacon actorPage
+        putStrLn $ "Found " ++ (show $ length films) ++ " films for " ++ (name actor)
+        storeProcessingResult actor films

@@ -20,7 +20,8 @@ groupByRows :: (Tag String -> Bool) -> [Tag String] -> [[Tag String]]
 groupByRows groupFunc tags = doGroup groupFunc [] tags
 
 doGroup :: (Tag String -> Bool) -> [[Tag String]] -> [Tag String] -> [[Tag String]]
-doGroup func groups tags = doGroup func (newGroup:groups) rest --QQ (tag:tags???)
+doGroup _ groups [] = groups
+doGroup func groups (tag:tags) = doGroup func (newGroup:groups) rest
     where (newGroup, rest) = span func tags
 
 class (Entity e) => EntityParser p e | p -> e where
@@ -37,4 +38,6 @@ class (Entity e) => EntityParser p e | p -> e where
     notRow :: p -> Tag String -> Bool
     
     tagFilters :: p -> [([Tag String] -> [Tag String])]    
+    
+    
     

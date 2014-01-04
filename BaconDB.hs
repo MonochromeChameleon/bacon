@@ -1,4 +1,4 @@
-module BaconDB (getProcessingStatus, loadActorsWithBacon, storeActors, loadFilmsWithBacon, storeFilms, deleteFilm) where
+module BaconDB (getProcessingStatus, loadEntitiesWithBacon, storeProcessingResult, delete) where
 
 import Database.HDBC
 
@@ -18,8 +18,8 @@ getProcessingStatus = withConnection getProcessingStatus_
 
 getProcessingStatus_ :: IConnection c => c -> IO (Bacon, Bool)
 getProcessingStatus_ conn = do
-    let query = "SELECT MIN(bacon) FROM actor WHERE processed = ?"
-    res <- getSingleResult conn query [toSql False]
+    let query = "SELECT MIN(bacon) FROM (SELECT MIN(bacon) bacon FROM actor WHERE processed = ? UNION ALL SELECT MIN(bacon) bacon FROM Film WHERE processed = ?)"
+    res <- getSingleResult conn query [toSql False, toSql False]
     
     let incomplete = "SELECT COUNT(*) > 0 FROM actor WHERE bacon = ? AND processed = ?"
     incompleteRes <- getSingleResult conn incomplete [(res!!0), toSql True]
@@ -32,50 +32,35 @@ getProcessingStatus_ conn = do
     let baconToProcess = if isIncomplete then bacon else bacon - 1
     
     return (baconToProcess, isIncomplete)
+    
 
+-- | Returns a batch of up to 50,000 unprocessed entities with the given type and bacon number.
+loadEntitiesWithBacon :: Entity a => EntityType -> Bacon -> IO [a]
+loadEntitiesWithBacon et bacon = withConnection $ loadEntitiesWithBacon_ et bacon
 
--- | Returns a batch of up to 50,000 unprocessed actors with the given bacon number.
-loadActorsWithBacon :: Bacon -> IO [Actor]
-loadActorsWithBacon bacon = withConnection $ loadActorsWithBacon_ bacon
-
-loadActorsWithBacon_ :: IConnection c => Bacon -> c -> IO [Actor]
-loadActorsWithBacon_ bacon conn = do
-    let query = "SELECT " ++ (allColumns dummyActor) ++ " FROM actor WHERE bacon = ? AND processed = ? LIMIT 50000"
+loadEntitiesWithBacon_ :: IConnection c => Entity a => EntityType -> Bacon -> c -> IO [a]
+loadEntitiesWithBacon_ et bacon conn = do
+    let query = "SELECT " ++ (allColumns et) ++ " FROM " ++ (tableName et) ++ " WHERE bacon = ? AND processed = ? LIMIT 50000"
     res <- quickQuery' conn query [toSql bacon, toSql False]
     
     return $ map readSql res
     
-
--- | Creates entries in the actor_film table for the given film and actors.    
-storeActors :: Film -> [Actor] -> IO ()
-storeActors film actors = tryWithConnection $ processingResult film actors
-
-
--- | Returns a batch of up to 50,000 unprocessed films with the given bacon number.
-loadFilmsWithBacon :: Bacon -> IO [Film]
-loadFilmsWithBacon bacon = withConnection $ loadFilmsWithBacon_ bacon
-
-loadFilmsWithBacon_ :: IConnection c => Bacon -> c -> IO [Film]
-loadFilmsWithBacon_ bacon conn = do
-    let query = "SELECT " ++ (allColumns dummyFilm) ++ " FROM film WHERE bacon = ? AND processed = ? LIMIT 50000"
-    res <- quickQuery' conn query [toSql bacon, toSql False]
-
-    return $ map readSql res
-
-
--- | Creates entries in the actor_film table for the given actor and films.
-storeFilms :: Actor -> [Film] -> IO()
-storeFilms actor films = tryWithConnection $ processingResult actor films
     
--- | Deletes all references to the provided film within the film and actor_film tables.
-deleteFilm :: Film -> IO()
-deleteFilm film = tryWithConnection $ deleteFilm_ film
+-- | Creates entries in the actor_film table for the given source and values.
+storeProcessingResult :: Entity a => Entity b => a -> [b] -> IO ()
+storeProcessingResult source values = tryWithConnection $ processingResult source values
 
-deleteFilm_ :: IConnection c => Film -> c -> IO ()
-deleteFilm_ film conn = do
-    run conn "DELETE FROM film WHERE film_id = ?" [toSql $ imdbid film]
-    run conn "DELETE FROM actor_film WHERE film_id = ?" [toSql $ imdbid film]
+
+
+delete :: Entity a => a -> IO ()
+delete et = tryWithConnection $ delete_ et
+
+delete_ :: Entity a => IConnection c => a -> c -> IO ()
+delete_ e conn = do
+    run conn ("DELETE FROM " ++ (tableName et) ++ " WHERE " ++ (idColumnName et) ++ " = ?") [toSql $ imdbid e]
+    run conn ("DELETE FROM actor_film WHERE " ++ (idColumnName et) ++ " = ?") [toSql $ imdbid e]
     return ()
+    where et = entityType e
 
         
 -- | Utility function to return the first value from a query.

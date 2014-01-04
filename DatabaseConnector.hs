@@ -33,8 +33,10 @@ tryWithConnection :: (Connection -> IO ()) -> IO ()
 tryWithConnection func = do
     result <- try (withConnection func) :: IO (Either SqlError ())
     case result of
-        Left r -> tryAgain func
-        Right _ -> return ()
+        Left (SqlError r t f) -> do
+            putStrLn f
+            tryAgain func
+        Right r -> return ()
         
 tryAgain :: (Connection -> IO ()) -> IO ()
 tryAgain func = do
