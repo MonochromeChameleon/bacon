@@ -10,24 +10,31 @@ Network.HTTP.Conduit    -- cabal install http-conduit
 
 
 import System.Environment
+--import Control.Monad
+--import Data.Char
+--import System.Directory
+import System.IO
 
 import Config
 import BaconDB
 import Spider
 import DataModel
 import Schema
-
-kevin :: Actor
-kevin = Actor { name = "Kevin Bacon", actor_details = details }
-    where details = IMDBDetails { imdbId = "nm0000102", baconNumber = 0 }
+import Search
 
 main :: IO()
 main = do 
+    hSetBuffering stdout NoBuffering
     args <- getArgs
     case args of
         ["initialize"] -> do 
-            createDB
-            seed kevin
+            seedActor <- runSearch
+            case seedActor of
+                Just actor -> do
+                    addConfig actor
+                    createDB
+                    seed actor
+                _ -> return ()
         ["crawl", maxBacon] -> crawl (read maxBacon::Int)
         _ -> syntaxError
 

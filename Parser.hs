@@ -11,6 +11,10 @@ getContent :: Tag String -> String
 getContent (TagText txt) = txt -- Get the text content of the node
 getContent _ = ""
 
+getAllContent :: [Tag String] -> String
+getAllContent [] = ""
+getAllContent (tag:tags) = getContent tag ++ (getAllContent tags)
+
 -- | Recursively applies filters to a list of tags
 filterTags :: [([Tag String] -> [Tag String])] -> [Tag String] -> [Tag String]
 filterTags [] tags = tags
@@ -21,7 +25,8 @@ groupByRows groupFunc tags = doGroup groupFunc [] tags
 
 doGroup :: (Tag String -> Bool) -> [[Tag String]] -> [Tag String] -> [[Tag String]]
 doGroup _ groups [] = groups
-doGroup func groups (tag:tags) = doGroup func (newGroup:groups) rest
+doGroup _ groups (tag:[]) = groups
+doGroup func groups (tag:tags) = doGroup func (groups ++ [newGroup]) rest
     where (newGroup, rest) = span func tags
 
 class (Entity e) => EntityParser p e | p -> e where

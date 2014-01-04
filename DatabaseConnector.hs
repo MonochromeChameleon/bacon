@@ -12,6 +12,16 @@ import Database.HDBC.Sqlite3
 import System.IO
 import System.Random
 
+import Config
+
+dbName :: IO String
+dbName = do
+    curr <- currentDB
+    case curr of
+        Just db -> return db
+        _ -> return "bacon.db"
+    
+
 -- |Wrapper for functions that require a connection to the database - any externally-exposed
 -- |functions in this module that use a db connection should simply defer execution to a 
 -- |private function with the connection as its last argument, to be executed by this wrapper 
@@ -19,7 +29,8 @@ import System.Random
 -- |is ever defined, and we can be confident that it will never be left open.
 withConnection :: (Connection -> IO a) -> IO a
 withConnection func = do
-    conn <- connectSqlite3 "bacon.db"
+    db <- dbName
+    conn <- connectSqlite3 db
     res <- func conn
     commit conn
     disconnect conn

@@ -9,7 +9,8 @@ createDB :: IO ()
 createDB = do
     schema <- readFile "bacon.sql"     -- Get our DB schema from an external SQL file
     withConnection $ createDB_ schema
-    
+
+
 createDB_ :: IConnection c => String -> c -> IO()
 createDB_ schema conn = runRaw conn schema
     

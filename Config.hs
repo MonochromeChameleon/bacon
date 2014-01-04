@@ -2,6 +2,7 @@ module Config where
 
 import DataModel
 import System.IO
+import ORM
 
 configFile :: String
 configFile = "bacon.conf"
@@ -11,6 +12,15 @@ data ConfigState = ConfigState { current :: Maybe Instance,
 
 data Instance = Instance { dbname :: String,
                            seed_ :: Actor } deriving (Eq, Show, Read)
+                           
+
+currentDB :: IO (Maybe String)
+currentDB = do
+    conf <- getConfig 
+    let curr = current conf
+    case (curr) of
+        Just c -> return $ Just (dbname c)
+        _ -> return Nothing
 
 
 reset :: IO ()
@@ -20,8 +30,6 @@ reset = do
 
 getFileHandle :: IO Handle
 getFileHandle = openFile configFile ReadWriteMode
-
-
 
 writeConfig :: ConfigState -> IO ()
 writeConfig conf = writeFile configFile $ show conf
@@ -36,12 +44,12 @@ getConfig = do
 
     return inst
 
-addConfig :: String -> Actor -> IO()
-addConfig dbName actor = do
+addConfig :: Actor -> IO()
+addConfig actor = do
     currentConf <- getConfig
     
     handle <- getFileHandle
-    let newConf = doAddConfig currentConf Instance { dbname = dbName, seed_ = actor }
+    let newConf = doAddConfig currentConf Instance { dbname = (imdbid actor) ++ ".db", seed_ = actor }
     hPutStr handle (show newConf)
     hClose handle
 
