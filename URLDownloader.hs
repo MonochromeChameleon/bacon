@@ -11,13 +11,15 @@ import qualified Data.ByteString.Lazy as L
 -- == PAGE DOWNLOAD FUNCTION == --
 -- ============================ --
 
+-- | Downloads the given URL, returning the HTML content of the page, or else failing after four attempts
 downloadURL :: String -> IO String
 downloadURL = tryDownloadURL 0
 
+-- Private function
 
--- Retries a failed download up to three additional times before bailing out and returning
--- an empty string. Uses ByteString processing to optimize the request/response processing
--- time.
+-- | Recursively keep attempting downloads until either success, or too many failed attempts, in
+-- | which case return an empty string. Uses ByteString processing to optimize the 
+-- | request/response processing time
 tryDownloadURL :: Integer -> String -> IO String
 tryDownloadURL 4 _ = return ""
 tryDownloadURL attempts url = do
@@ -29,5 +31,5 @@ tryDownloadURL attempts url = do
         return $ bytesToString html_word8 :: IO String
     else do
         putStrLn $ "Download Error: " ++ url
-        -- Recurse until we get a result. Is this dangerous?
+        -- Recurse until we get a result, or fail too many times
         tryDownloadURL (attempts + 1) url

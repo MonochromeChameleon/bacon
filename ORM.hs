@@ -73,9 +73,6 @@ instance Enum EntityType where
     fromEnum FilmType = 1
 
 
-class (Entity a) => Crawl a where
-    doCrawl :: Int -> a -> IO()
-
 ---------------------
 -- Utility Methods --
 ---------------------

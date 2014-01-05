@@ -1,48 +1,38 @@
-module BaconDB (getProcessingStatus, loadEntitiesWithBacon, storeProcessingResult, delete) where
+module BaconDB (createDB, seed, loadEntitiesWithBacon, storeProcessingResult, delete) where
 
 import Database.HDBC
 
 import DatabaseConnector
 import DataModel
 import ORM
-import Schema
 
 
--- | Returns the lowest unprocessed bacon number from the actors table, along with
--- | a boolean flag indicating whether some of the actors with that bacon number 
--- | have been processed. If none of those actors have been processed, then we should
--- | begin processing from the films with bacon number one less than the queried 
--- | value.
-getProcessingStatus :: IO (Bacon, Bool)
-getProcessingStatus = withConnection getProcessingStatus_
+-- | Creates a new database using the provided schema file.
+createDB :: IO ()
+createDB = do
+    schema <- readFile "bacon.sql"     -- Get our DB schema from an external SQL file
+    withConnection $ createDB_ schema
 
-getProcessingStatus_ :: IConnection c => c -> IO (Bacon, Bool)
-getProcessingStatus_ conn = do
-    let query = "SELECT MIN(bacon) FROM (SELECT MIN(bacon) bacon FROM actor WHERE processed = ? UNION ALL SELECT MIN(bacon) bacon FROM Film WHERE processed = ?)"
-    res <- getSingleResult conn query [toSql False, toSql False]
+-- | Internal function called via DatabaseConnector.withConnection to create the database
+createDB_ :: IConnection c => String -> c -> IO()
+createDB_ schema conn = runRaw conn schema
     
-    let incomplete = "SELECT COUNT(*) > 0 FROM actor WHERE bacon = ? AND processed = ?"
-    incompleteRes <- getSingleResult conn incomplete [(res!!0), toSql True]
-    
-    let isIncomplete = (fromSql (incompleteRes!!0)::Int) == 1
-    let bacon = fromSql (res!!0)::Bacon
-    
-    -- If the actor processing is incomplete then that is the correct bacon number 
-    -- to be running. If not, then we want to check the preceding level of film instead.
-    let baconToProcess = if isIncomplete then bacon else bacon - 1
-    
-    return (baconToProcess, isIncomplete)
+
+-- | Seeds the database with the given entity
+seed :: Entity a => a -> IO()
+seed entity = withConnection $ insert entity
     
 
 -- | Returns a batch of up to 50,000 unprocessed entities with the given type and bacon number.
 loadEntitiesWithBacon :: Entity a => EntityType -> Bacon -> IO [a]
 loadEntitiesWithBacon et bacon = withConnection $ loadEntitiesWithBacon_ et bacon
 
+
+-- | Internal function called via DatabaseConnector.withConnection to fetch a batch of entities.
 loadEntitiesWithBacon_ :: IConnection c => Entity a => EntityType -> Bacon -> c -> IO [a]
 loadEntitiesWithBacon_ et bacon conn = do
     let query = "SELECT " ++ (allColumns et) ++ " FROM " ++ (tableName et) ++ " WHERE bacon = ? AND processed = ? LIMIT 50000"
     res <- quickQuery' conn query [toSql bacon, toSql False]
-    
     return $ map readSql res
     
     
@@ -51,10 +41,12 @@ storeProcessingResult :: Entity a => Entity b => a -> [b] -> IO ()
 storeProcessingResult source values = tryWithConnection $ processingResult source values
 
 
-
+-- | Deletes the given entity and its corresponding actor_film entries
 delete :: Entity a => a -> IO ()
 delete et = tryWithConnection $ delete_ et
 
+
+-- | Internal function called via DatabaseConnector.withConnection to delete entities
 delete_ :: Entity a => IConnection c => a -> c -> IO ()
 delete_ e conn = do
     run conn ("DELETE FROM " ++ (tableName et) ++ " WHERE " ++ (idColumnName et) ++ " = ?") [toSql $ imdbid e]
@@ -62,9 +54,3 @@ delete_ e conn = do
     return ()
     where et = entityType e
 
-        
--- | Utility function to return the first value from a query.
-getSingleResult :: IConnection c => c -> String -> [SqlValue] -> IO [SqlValue]
-getSingleResult conn query params = do
-    res <- quickQuery' conn query params
-    return (res!!0)

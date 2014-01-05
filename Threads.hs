@@ -37,6 +37,7 @@ doMultiThread toExecute cores ix | cores <= ix = return []
     
     return (mvar:mvars)
 
+
 -- | Creates an individual thread, returning its Boolean completion flag.
 createThread :: (Int -> MVar Bool -> IO()) -> Int ->  IO (MVar Bool)
 createThread toExecute ix = do
@@ -53,5 +54,4 @@ readMVars [] = return ()
 readMVars (mvar:mvars) = do
     synced <- takeMVar mvar
     readMVars mvars
-
 

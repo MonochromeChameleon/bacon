@@ -17,7 +17,6 @@ import Config
 import BaconDB
 import Spider
 import DataModel
-import Schema
 import Search
 
 main :: IO()

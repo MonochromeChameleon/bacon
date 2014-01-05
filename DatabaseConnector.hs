@@ -48,7 +48,10 @@ tryWithConnection func = do
             putStrLn f
             tryAgain func
         Right r -> return ()
-        
+
+
+-- | Recursively re-attempts a failed DB operation after a random delay to avoid contention on
+-- | multiple threads.
 tryAgain :: (Connection -> IO ()) -> IO ()
 tryAgain func = do
     putStrLn "Contention for DB Connection - waiting"

@@ -7,6 +7,9 @@ import Data.Text(strip, pack, unpack)
 
 import DataModel
 
+-- | Utilities for filtering and parsing HTML pages, used in the various implementations of the
+-- | EntityParser typeclass
+
 -- ======================= --
 -- BASIC PARSING UTILITIES --
 -- ======================= --
