@@ -10,6 +10,28 @@ import DataModel
 import Parser
 import ParsingUtils
 
+-- Public methods
+
+-- | Extracts the list of Films from an actor page
+parseActor :: Bacon -> String -> [Film]
+parseActor = processHTML ActorParser
+
+-- Private methods
+
+-- | Extracts the Film details from a list of tags corresponding to a single row in our HTML page
+doParseRow :: Bacon -> [Tag String] -> Film
+doParseRow bc tags = Film { title = filmName, year = yr, film_details = details }
+    where yearTags = dropWhile isNotFilmYear tags
+          yr = parseYear $ (unpack.strip.pack) $ getContent $ yearTags!!1
+          tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
+          url = getLink $ tagsOfInterest!!0         -- URL comes first
+          filmName = getContent $ (dropWhile notTagText tagsOfInterest)!!0 -- Name of the film is the text node inside the <a>tag
+          imdbid = takeWhile (\x -> x /= '/') $ drop 7 url
+          details = IMDBDetails { imdbId = imdbid, baconNumber = bc }
+          
+
+-- Actual parser, as an instance of the EntityParser typeclass
+
 data ActorParser = ActorParser
 
 instance EntityParser ActorParser Film where
@@ -26,20 +48,3 @@ instance EntityParser ActorParser Film where
     - Then keep all tags up until the next with id beginning "filmo-head"  -}
     tagFilters _ = [dropWhile notActorFilmographyHeader, dropWhile notFilmographySection, dropWhile (not.notFilmographyHeader), takeWhile notFilmographyHeader, dropWhile isNotFilmographyRow]
 
-parseActor :: Bacon -> String -> [Film]
-parseActor = processHTML ActorParser
-
-          
--- Private methods
-
-
-doParseRow :: Bacon -> [Tag String] -> Film
-doParseRow bc tags = Film { title = filmName, year = yr, film_details = details }
-    where yearTags = dropWhile isNotFilmYear tags
-          yr = parseYear $ (unpack.strip.pack) $ getContent $ yearTags!!1
-          tagsOfInterest = dropWhile notLink tags   -- We are only interested in the first <a href of each row, which will have the URL and the name
-          url = getLink $ tagsOfInterest!!0         -- URL comes first
-          filmName = getContent $ (dropWhile notTagText tagsOfInterest)!!0 -- Name of the film is the text node inside the <a>tag
-          imdbid = takeWhile (\x -> x /= '/') $ drop 7 url
-          details = IMDBDetails { imdbId = imdbid, baconNumber = bc }
-          

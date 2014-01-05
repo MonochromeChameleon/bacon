@@ -8,6 +8,27 @@ import DataModel
 import Parser
 import ParsingUtils
 
+-- Public methods
+
+-- | Extracts the list of Actors from a search results page
+parseSearchResults :: String -> [Actor]
+parseSearchResults = processHTML SearchParser 0
+
+
+-- Private methods
+
+-- | Extracts the Actor details from a list of tags corresponding to a single row in our HTML page
+doParseRow :: Bacon -> [Tag String] -> Actor
+doParseRow _ tags = Actor { name = nm, actor_details = details }
+    where tagsOfInterest = dropWhile notLink $ dropWhile notSearchResultCell tags -- Drop everything up to the hyperlink
+          url = getLink $ tagsOfInterest!!0     -- URL comes first
+          nm = getAllContent $ tagsOfInterest
+          imdbid = takeWhile (\x -> x /= '/') $ drop 6 url
+          details = IMDBDetails { imdbId = imdbid, baconNumber = 0 }
+
+
+-- Actual parser, as an instance of the EntityParser typeclass
+
 data SearchParser = SearchParser
 
 instance EntityParser SearchParser Actor where
@@ -24,16 +45,3 @@ instance EntityParser SearchParser Actor where
     - Cleanup so that we start on a row  -}
     tagFilters _ = [dropWhile notSearchResultRow, takeWhile notEndTable]
     
-parseSearchResults :: String -> [Actor]
-parseSearchResults = processHTML SearchParser 0
-
-
-
-doParseRow :: Bacon -> [Tag String] -> Actor
-doParseRow _ tags = Actor { name = nm, actor_details = details }
-    where tagsOfInterest = dropWhile notLink $ dropWhile notSearchResultCell tags -- Drop everything up to the hyperlink
-          url = getLink $ tagsOfInterest!!0     -- URL comes first
-          nm = getAllContent $ tagsOfInterest
-          imdbid = takeWhile (\x -> x /= '/') $ drop 6 url
-          details = IMDBDetails { imdbId = imdbid, baconNumber = 0 }
-

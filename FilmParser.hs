@@ -9,6 +9,44 @@ import DataModel
 import Parser
 import ParsingUtils
 
+-- Public methods
+
+-- | Extracts the list of Actors from a full cast list
+parseFilm :: Bacon -> String -> [Actor]
+parseFilm = processHTML FilmParser
+
+
+-- | Indicates whether the given film has the "Adult" genre
+checkAdultStatus :: String -> Bool
+checkAdultStatus html = doCheckAdultStatus tags
+    where tags = parseTags html
+
+
+-- Private methods
+
+-- | Extracts the Actor details from a list of tags corresponding to a single row in our HTML page
+doParseRow :: Bacon -> [Tag String] -> Actor
+doParseRow bn tags = Actor { name = nm, actor_details = details }
+    where tagsOfInterest = dropWhile notLink $ dropWhile notCastCell tags -- Drop everything up to the hyperlink
+          url = getLink $ tagsOfInterest!!0     -- URL comes first
+          nm = getContent $ tagsOfInterest!!3 -- Name of the person is the text node inside the <span> in the <a>tag
+          imdbid = takeWhile (\x -> x /= '/') $ drop 6 url
+          details = IMDBDetails { imdbId = imdbid, baconNumber = bn }
+
+
+-- | Recursively loops through genre tags to check whether any of them are "Adult"
+doCheckAdultStatus :: [Tag String] -> Bool
+doCheckAdultStatus [] = False
+doCheckAdultStatus tags = result
+    where genreTags = dropWhile notGenreTag tags
+          genreValue = getContent $ genreTags!!1
+          isAdult = genreValue == "Adult"
+          recursiveResult = doCheckAdultStatus $ drop 1 genreTags
+          result = if length genreTags < 1 then False else (isAdult || recursiveResult)
+
+
+-- Actual parser, as an instance of the EntityParser typeclass
+
 data FilmParser = FilmParser
 
 instance EntityParser FilmParser Actor where
@@ -24,39 +62,4 @@ instance EntityParser FilmParser Actor where
     - Keep everything up to the end of the table
     - Cleanup so that we start on a row  -}
     tagFilters _ = [dropWhile notCastRow, drop 1, takeWhile notEndTable, dropWhile notStartTableRow]
-    
-parseFilm :: Bacon -> String -> [Actor]
-parseFilm = processHTML FilmParser
-
-
-doParseRow :: Bacon -> [Tag String] -> Actor
-doParseRow bn tags = Actor { name = nm, actor_details = details }
-    where tagsOfInterest = dropWhile notLink $ dropWhile notCastCell tags -- Drop everything up to the hyperlink
-          url = getLink $ tagsOfInterest!!0     -- URL comes first
-          nm = getContent $ tagsOfInterest!!3 -- Name of the person is the text node inside the <span> in the <a>tag
-          imdbid = takeWhile (\x -> x /= '/') $ drop 6 url
-          details = IMDBDetails { imdbId = imdbid, baconNumber = bn }
           
-
-
-
-
-
-checkAdultStatus :: String -> Bool
-checkAdultStatus html = doCheckAdultStatus tags
-    where tags = parseTags html
-
-          
--- Private methods
-
-
-
-doCheckAdultStatus :: [Tag String] -> Bool
-doCheckAdultStatus [] = False
-doCheckAdultStatus tags = result
-    where genreTags = dropWhile notGenreTag tags
-          genreValue = getContent $ genreTags!!1
-          isAdult = genreValue == "Adult"
-          recursiveResult = doCheckAdultStatus $ drop 1 genreTags
-          result = if length genreTags < 1 then False else (isAdult || recursiveResult)
-    
