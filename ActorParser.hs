@@ -24,7 +24,7 @@ instance EntityParser ActorParser Film where
     - Drop all tags up to the one whose id begins "filmo-head-act"
     - Then drop all tags up to the next with class "filmo-category-section"
     - Then keep all tags up until the next with id beginning "filmo-head"  -}
-    tagFilters _ = [dropWhile notActorFilmographyHeader, dropWhile notFilmographySection, dropWhile (not.notFilmographyHeader), takeWhile notFilmographyHeader, dropWhile notStartTableRow]
+    tagFilters _ = [dropWhile notActorFilmographyHeader, dropWhile notFilmographySection, dropWhile (not.notFilmographyHeader), takeWhile notFilmographyHeader, dropWhile isNotFilmographyRow]
 
 parseActor :: Bacon -> String -> [Film]
 parseActor = processHTML ActorParser

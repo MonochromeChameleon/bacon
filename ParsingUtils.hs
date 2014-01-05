@@ -29,6 +29,12 @@ notTagText (TagText _) = False
 notTagText _ = True
 
 
+-- | Returns whether the specified tag has the given id
+hasId :: String -> Tag String -> Bool
+hasId idName (TagOpen tag atts) = length (filter (\x -> fst x == "id" && (isInfixOf idName $ snd x)) atts) > 0
+hasId _ _ = False
+
+
 -- | Returns whether the specified tag has the given class
 hasClass :: String -> Tag String -> Bool
 hasClass className (TagOpen tag atts) = length (filter (\x -> fst x == "class" && (isInfixOf className $ snd x)) atts) > 0
@@ -67,7 +73,7 @@ notLink = not.(isOpenTag "a")
 
 -- | Allow filtering on the start of a table
 notStartTable :: Tag String -> Bool
-notStartTable = not.(isCloseTag "table")
+notStartTable = not.(isOpenTag "table")
 
 
 -- | Allow filtering on the end of a table
@@ -106,12 +112,12 @@ parseYear str = read (take 4 str)::Year
 
 -- | Allow filtering on whether the tag is the start of a filmography section
 notFilmographyHeader :: Tag String -> Bool
-notFilmographyHeader = not.(hasClass "filmo-head-")
+notFilmographyHeader = not.(hasId "filmo-head-")
 
 
 -- | Allow filtering on whether the tag is the start of the filmography as an actor (i.e. not producer etc.)
 notActorFilmographyHeader :: Tag String -> Bool
-notActorFilmographyHeader = not.(hasClass "filmo-head-act")
+notActorFilmographyHeader = not.(hasId "filmo-head-act")
 
 
 -- | Allow filtering on whether the tag is the start of a filmography section
@@ -135,7 +141,9 @@ shouldIgnore _ = False
 
 -- | Allow filtering on whether the given tag is the start of a cast list
 notCastRow :: Tag String -> Bool
-notCastRow tag = (notStartTable tag) || not (hasClass "cast_list" tag)
+notCastRow tag = isNotTable || isNotCastList
+    where isNotTable = notStartTable tag
+          isNotCastList = not (hasClass "cast_list" tag)
 
 
 -- | Allow filtering on whether the given tag is a genre tag
