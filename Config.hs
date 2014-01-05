@@ -36,22 +36,17 @@ writeConfig conf = writeFile configFile $ show conf
 
 getConfig :: IO ConfigState
 getConfig = do
-    handle <- getFileHandle
-    txt <- hGetContents handle
-    putStrLn txt
+    txt <- readFile configFile
     let inst = read txt::ConfigState
-    hClose handle
-
-    return inst
+    length txt `seq` (return inst)
 
 addConfig :: Actor -> IO()
 addConfig actor = do
     currentConf <- getConfig
+    let newInstance = Instance { dbname = (imdbid actor) ++ ".db", seed_ = actor }
+    let newConf = doAddConfig currentConf newInstance
     
-    handle <- getFileHandle
-    let newConf = doAddConfig currentConf Instance { dbname = (imdbid actor) ++ ".db", seed_ = actor }
-    hPutStr handle (show newConf)
-    hClose handle
+    writeFile configFile $ show newConf
 
 doAddConfig :: ConfigState -> Instance -> ConfigState
 doAddConfig currentConf newInstance = ConfigState { current = Just newInstance, options = (newInstance:(options currentConf)) }

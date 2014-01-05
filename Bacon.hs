@@ -5,14 +5,12 @@ Database.HDBC.Sqlite3   -- cabal install HDBC-Sqlite3
 Text.HTML.TagSoup       -- cabal install TagSoup
 Language.Haskell.TH.Ppr -- cabal install template-haskell
 Network.HTTP.Conduit    -- cabal install http-conduit
+Happstack.Lite          -- cabal install happstack-lite
 -}
 
 
 
 import System.Environment
---import Control.Monad
---import Data.Char
---import System.Directory
 import System.IO
 
 import Config

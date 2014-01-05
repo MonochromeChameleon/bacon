@@ -7,14 +7,6 @@ import DataModel
 import ORM
 
  
-getContent :: Tag String -> String
-getContent (TagText txt) = txt -- Get the text content of the node
-getContent _ = ""
-
-getAllContent :: [Tag String] -> String
-getAllContent [] = ""
-getAllContent (tag:tags) = getContent tag ++ (getAllContent tags)
-
 -- | Recursively applies filters to a list of tags
 filterTags :: [([Tag String] -> [Tag String])] -> [Tag String] -> [Tag String]
 filterTags [] tags = tags
