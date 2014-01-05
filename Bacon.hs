@@ -12,10 +12,12 @@ import System.IO
 
 import Config
 import BaconDB
-import Spider
 import DataModel
 import Search
+import Server
+import Spider
 
+-- | Main command for runing our Bacon crawler.
 main :: IO()
 main = do 
     hSetBuffering stdout NoBuffering
@@ -30,11 +32,11 @@ main = do
                     seed actor
                 _ -> return ()
         ["crawl", maxBacon] -> crawl (read maxBacon::Int)
-        ["configure"] -> do
-            --QQ Config switching
-            return ()
+        ["configure"] -> switchConfig
+        ["server"] -> runServer
         _ -> syntaxError
 
+-- | For unrecognized commands, we print a helpful message instead.
 syntaxError :: IO()
 syntaxError = putStrLn 
   "Usage: bacon [args]\n\

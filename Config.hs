@@ -4,6 +4,9 @@ import DataModel
 import System.IO
 import ORM
 
+switchConfig :: IO ()
+switchConfig = return () --QQ
+
 configFile :: String
 configFile = "bacon.conf"
 
