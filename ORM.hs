@@ -3,11 +3,13 @@ module ORM where
 import Data.List(nub, intercalate)
 import Database.HDBC
 
+import Utils
 
 -- | This handles the basic save/lookup functionality for our data types. I could have thought
 -- | of a better name, no doubt, but I came from an OO world before...
 class Eq a => Entity a where
     
+    -- Basic utility properties
     entityType :: a -> EntityType
     imdbid :: a -> String
     bacon :: a -> Int
@@ -15,8 +17,8 @@ class Eq a => Entity a where
     asSql :: a -> [SqlValue]
 
 
-    -- Saves the provided new entities, associating them with the root entity and flagging
-    -- that root as having been processed.
+    -- | Saves the provided new entities, associating them with the root entity and flagging
+    -- | that root as having been processed.
     processingResult :: Entity b => IConnection c => b -> [a] -> c -> IO()
     processingResult source values conn = do
         newValues <- findNew conn values
@@ -62,16 +64,6 @@ instance EntityTypeDef EntityType where
         _ -> ["film_id", "title", "year", "bacon"]
     allColumns et = intercalate "," $ columnNames et
     
-
-
-instance Enum EntityType where
-    toEnum 0 = ActorType
-    toEnum 1 = FilmType
-    toEnum v = toEnum(mod v 2) -- Allow unbounded enum so that succ is defined on both values.
-    
-    fromEnum ActorType = 0
-    fromEnum FilmType = 1
-
 
 ---------------------
 -- Utility Methods --
@@ -126,8 +118,3 @@ connect conn a bs | length bs == 0 = return ()
     stmt <- prepare conn ("INSERT INTO actor_film (" ++ (idColumnName $ entityType a) ++ ", " ++ (idColumnName etb) ++ ") VALUES (?, ?)")
     executeMany stmt (map (\x -> [toSql $ imdbid a, toSql $ imdbid x]) bs)
     where etb = entityType $ head bs
-
--- | Utility function - creates a string with the appropriate number of question marks for
--- | the arguments to a query.
-parametrize :: [a] -> String
-parametrize values = intercalate "," $ replicate (length values) "?"
