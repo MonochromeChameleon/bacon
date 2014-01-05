@@ -2,6 +2,7 @@ module Search where
 
 import Text.Regex
 
+import Config
 import DataModel
 import Prompt
 import SearchParser

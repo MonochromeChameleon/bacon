@@ -10,6 +10,11 @@ switchConfig = return () --QQ
 configFile :: String
 configFile = "bacon.conf"
 
+
+imdbBaseUrl :: String
+imdbBaseUrl = "http://www.imdb.com/"
+
+
 data ConfigState = ConfigState { current :: Maybe Instance,
                                  options :: [Instance] } deriving (Eq, Show, Read)
 

@@ -17,24 +17,6 @@ type Name = String
 type Year = Int
 type Bacon = Int
 
-type URL = String
-
-          
-imdbBaseUrl :: String
-imdbBaseUrl = "http://www.imdb.com/"
-
-actorUrl :: Actor -> URL
-actorUrl actor = imdbBaseUrl ++ "name/" ++ (imdbid actor) ++ "/"
-
-filmUrl :: Film -> URL
-filmUrl film = imdbBaseUrl ++ "title/" ++ (imdbid film) ++ "/"
-
-fullCastUrl :: Film -> URL
-fullCastUrl film = imdbBaseUrl ++ "title/" ++ (imdbid film) ++ "/fullcredits"
-    
-
-
-
 
 instance Entity Actor where
     entityType _ = ActorType

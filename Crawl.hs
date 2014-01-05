@@ -1,7 +1,8 @@
 module Crawl(crawlEntities) where
 
-import BaconDB
 import ActorParser
+import BaconDB
+import Config
 import DataModel
 import FilmParser
 import ORM
@@ -16,6 +17,21 @@ crawlEntities _ [] = return ()
 crawlEntities bacon (e:es) = do
     doCrawl bacon e
     crawlEntities bacon es
+    
+    
+-- | Return the actor page URL for the given actor
+actorUrl :: Actor -> String
+actorUrl actor = imdbBaseUrl ++ "name/" ++ (imdbid actor) ++ "/"
+
+
+-- | Return the film summary page URL for the given film
+filmUrl :: Film -> String
+filmUrl film = imdbBaseUrl ++ "title/" ++ (imdbid film) ++ "/"
+
+
+-- | Return the film full cast page URL for the given film
+fullCastUrl :: Film -> String
+fullCastUrl film = imdbBaseUrl ++ "title/" ++ (imdbid film) ++ "/fullcredits"
 
 
 -- | Typeclass for our crawlable entities (which, admittedly, are all our entities)
