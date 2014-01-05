@@ -1,10 +1,14 @@
 -- | A handy little script for killing and restarting the bacon crawl process. I configured this
 -- | to run once a day on a cron job while I was on holiday, just in case the crawling process
 -- | hung at any point.
+{-
+Additional required packages:
+System.ShQQ          -- cabal install shqq
+-}
 import System.ShQQ
 import System.Cmd
 import Data.List
-import Data.Time
+import Data.Text(strip, pack, unpack)
 
 -- | Kills and starts the crawl
 main :: IO ()
@@ -37,7 +41,7 @@ getProcessId greps = do
     stout <- readShell cmd
     let processDetails = filter (\x -> not (isInfixOf "grep" x)) $ lines stout
     if length processDetails > 0 then
-        return $ fst (span (\x -> x /= ' ') (trim $ head processDetails))
+        return $ fst (span (\x -> x /= ' ') ((unpack.strip.pack) $ head processDetails))
     else
         return ""
     

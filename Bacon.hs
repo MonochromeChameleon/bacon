@@ -7,9 +7,6 @@ Language.Haskell.TH.Ppr -- cabal install template-haskell
 Network.HTTP.Conduit    -- cabal install http-conduit
 Happstack.Lite          -- cabal install happstack-lite
 -}
-
-
-
 import System.Environment
 import System.IO
 
@@ -33,10 +30,14 @@ main = do
                     seed actor
                 _ -> return ()
         ["crawl", maxBacon] -> crawl (read maxBacon::Int)
+        ["configure"] -> do
+            --QQ Config switching
+            return ()
         _ -> syntaxError
 
 syntaxError :: IO()
 syntaxError = putStrLn 
   "Usage: bacon [args]\n\
   \initialize       Create and seed a database\n\
-  \crawl max        Crawl from your seed reference to the specified level of connection"
+  \crawl [int]        Crawl from your seed reference to the specified level of connection\n\
+  \configure        Switch between available configurations"
