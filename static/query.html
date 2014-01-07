@@ -18,42 +18,95 @@
         <link rel="stylesheet" href="css/main.css">
 
         <!--[if lt IE 9]>
-            <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-            <script>window.html5 || document.write('<script src="js/vendor/html5shiv.js"><\/script>')</script>
+            <script src="js/vendor/html5shiv.js"></script>
         <![endif]-->
+        <script src="js/jquery/jquery-1.10.1.min.js"></script>
+        <script src="js/vendor/bootstrap.min.js"></script>
+        <script type="text/javascript" src="/js/require.js/require.js"></script>
+        <script type="text/javascript">
+            var requirejsConf = {
+                baseUrl: '/js/',
+                paths: {
+                    ko: "knockout"
+                }, 
+                waitSeconds: 15
+            };
+
+            requirejs.config(requirejsConf);
+        </script>
     </head>
     <body>
-    <div class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#">ECS713P - Functional Programming - Coursework 2 - Hugh Greenish</a>
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">ECS713P - Functional Programming - Coursework 2 - Hugh Greenish</a>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Main jumbotron for a primary marketing message or call to action -->
-    <div class="jumbotron">
-      <div class="container">
-        <h1>Six Degrees of Kevin Bacon</h1>
-      </div>
-    </div>
+        <div class="jumbotron">
+            <div class="container">
+                <h1>Six Degrees of Kevin Bacon</h1>
+            </div>
+        </div>
 
-    <div class="container">
-      <!-- Example row of columns -->
-      <div class="row">
-      </div>
-    </div> <!-- /container -->
-    
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
-    <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
-
-    <script src="js/vendor/bootstrap.min.js"></script>
-
-    <script src="js/main.js"></script>
+        <div class="container" id="bacon">
+            <form data-bind="submit: runSearch" action="#" method="GET">
+                <fieldset>
+                    <input type="search" id="textSearch" name="query" placeholder="Who would you like to search for?" data-bind="value: textSearch" />
+                    <input type="submit" name="submit" value="search" />
+                </fieldset>
+            </form>
+            <div style="display: none" data-bind="visible: true"><!-- Avoid FOUC -->
+                <!-- ko if: searchResults().length -->
+                <div class="searchResults" />
+                    <p>Did you mean</p>
+                    <!-- ko foreach: searchResults -->
+                    <div class="searchResult" data-bind="text: $data.name, click: $root.selectResult"></div>
+                    <!-- /ko -->
+                </div>
+                <!-- /ko -->
+                <!-- ko if: baconResult -->
+                <div class="baconResult">
+                    <div class="baconNumber">
+                        <span data-bind="template: { name: 'actorName', data: baconResult }"></span>
+                        has a bacon number of <span data-bind="text: baconResult().bacon"></span>
+                    </div>
+                    <div data-bind="template: { name: 'actorTemplate', data: baconResult }"></div>
+                </div>
+                <!-- /ko -->
+            </div>
+        </div> <!-- /container -->
+        
+        <script type="text/javascript">
+            requirejs(['bacon'], function (bacon) {
+                bacon.init('bacon');
+            });
+        </script>
+        
+        <script type="text/html" id="actorTemplate">
+            <div>
+                <span class="actor" data-bind="text: name"></span>
+                <!-- ko if: film.imdbId -->
+                was in <span data-bind="template: { name: 'filmTemplate', data: film }"></span>
+                with <span data-bind="template: { name: 'actorName', data: film.actor }"></span>
+                <!-- /ko -->
+                <!-- ko ifnot: film.imdbId -->
+                <span class="actor" data-bind="text: 'is ' + name"></span>
+                <!-- /ko -->
+            </div>
+            <!-- ko if: film.imdbId -->
+                <div data-bind="template: { name: 'actorTemplate', data: film.actor }"></div>
+            <!-- /ko -->
+        </script>
+        
+        <script type="text/html" id="actorName">
+            <span class="actor" data-bind="text: name"></span>
+        </script>
+        
+        <script type="text/html" id="filmTemplate">
+            <span class="film" data-bind="text: title"></span>
+            <span class="filmYear" data-bind="text: '(' + year + ')'"></span>
+        </script>
     </body>
 </html>

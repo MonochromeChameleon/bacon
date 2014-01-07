@@ -18,67 +18,59 @@
         <link rel="stylesheet" href="css/main.css">
 
         <!--[if lt IE 9]>
-            <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-            <script>window.html5 || document.write('<script src="js/vendor/html5shiv.js"><\/script>')</script>
+            <script src="js/vendor/html5shiv.js"></script>
         <![endif]-->
+        <script src="js/vendor/jquery-1.10.1.min.js"></script>
+        <script src="js/jquery/bootstrap.min.js"></script>
     </head>
     <body>
-    <div class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#">ECS713P - Functional Programming - Coursework 2 - Hugh Greenish</a>
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">ECS713P - Functional Programming - Coursework 2 - Hugh Greenish</a>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Main jumbotron for a primary marketing message or call to action -->
-    <div class="jumbotron">
-      <div class="container">
-        <h1>Six Degrees of Kevin Bacon</h1>
-        <p>Popular culture posits that anyone in the IMDB can be linked back to Kevin Bacon through <a href="http://en.wikipedia.org/wiki/Six_Degrees_of_Kevin_Bacon">no more than six links</a>. Depending on your definitions, that may well be true. In the interests of brevity, though, I needed to reduce the number of pages I was crawling somewhat as I only had about six weeks in which to gather data.</p>
-      </div>
-    </div>
+        <div class="jumbotron">
+            <div class="container">
+                <h1>Six Degrees of Kevin Bacon</h1>
+                <p>Popular culture posits that anyone in the IMDB can be linked back to Kevin Bacon through <a href="http://en.wikipedia.org/wiki/Six_Degrees_of_Kevin_Bacon">no more than six links</a>. Depending on your definitions, that may well be true. In the interests of brevity, though, I needed to reduce the number of pages I was crawling somewhat as I only had about six weeks in which to gather data.</p>
+            </div>
+        </div>
 
-    <div class="container">
-      <!-- Example row of columns -->
-      <div class="row">
-        <p>The haskell project backing this very website at which you are looking is running from a database built up by crawling outwards from <a href="http://www.imdb.com/name/nm0000102/">Kevin Bacon's imdb page</a>, identifying all the feature films in which he has had a credited role (55 at last count), then the aggregated credited cast of those 55 films - 2088 individuals. Those 2088 people have a degree of Kevin Bacon of 1, having worked directly with him. Working outwards, we can identify 15420 further films in which those people have had a credited role, with a total of 250,639 more credited actors who therefore have a bacon number of 2. We continue crawling outwards until no new actors are identified.</p>
-        <p>The specific limitations I imposed on my crawling were:
-            <ul>
-                <li>Only feature films should be considered - no TV, short films, documentaries, etc.</li>
-                <li>Adult films should be excluded as they tend to have large casts, who make a lot of films. Eww</li>
-                <li>Uncredited roles are not included</li>
-            </ul>
-        </p>
-        <p>The sample database provided alongside my coursework, though, doesn't necessarily include all of these filters at every stage, as I started crawling pages long before I finished writing the code. Fortunately, you can configure your own crawl, starting with anyone in the IMDB, should you so desire.</p>
-        <p>The crawling process took a little over a month on a domestic high-speed fibre broadband connection, during which time around 2,000,000 pages were requested. A repeat run on an equivalent connection would, most likely, take much less time thanks to later optimizations:
-            <ul>
-                <li>The HTTP requesting code has been optimised somewhat by using ByteStrings</li>
-                <li>The crawler has been reconfigured to detect the number of available cores and run on all of them simultaneously</li>
-            </ul>
-        </p>
-        <p>In total, four different page types required crawling:
-            <ul>
-                <li>Actor pages (e.g. <a href="http://www.imdb.com/name/nm0000102/">Kevin Bacon</a>) from which we extract individual filmographies</li>
-                <li>Film summary pages (e.g. <a href="http://www.imdb.com/title/tt0099582/">Flatliners</a>) to identify and exclude adult films</li>
-                <li>Film full credits pages (e.g. <a href="http://www.imdb.com/title/tt0100814/fullcredits">Tremors</a>) to identify all credited cast members</li>
-                <li>Search results pages (e.g. <a href="http://www.imdb.com/find?s=nm&exact=true&q=Kevin%20Bacon">Kevin Bacon</a>) for initializing a new database, or for searching on this web page</li>
-            </ul>
-        </p>
-        <p>And so, with no further ado, why not <a href="query.html">query</a> the database?</p>
-      </div>
-    </div> <!-- /container -->
-    
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
-    <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+        <div class="container">
+            <div class="row">
+                <p>The haskell project backing this very website at which you are looking is running from a database built up by crawling outwards from <a href="http://www.imdb.com/name/nm0000102/">Kevin Bacon's imdb page</a>, identifying all the feature films in which he has had a credited role (55 at last count), then the aggregated credited cast of those 55 films - 2088 individuals. Those 2088 people have a degree of Kevin Bacon of 1, having worked directly with him. Working outwards, we can identify 15420 further films in which those people have had a credited role, with a total of 250,639 more credited actors who therefore have a bacon number of 2. We continue crawling outwards until no new actors are identified.</p>
 
-    <script src="js/vendor/bootstrap.min.js"></script>
+                <p>The specific limitations I imposed on my crawling were:
+                    <ul>
+                        <li>Only feature films should be considered - no TV, short films, documentaries, etc.</li>
+                        <li>Adult films should be excluded as they tend to have large casts, who make a lot of films. Eww</li>
+                        <li>Uncredited roles are not included</li>
+                    </ul>
+                </p>
 
-    <script src="js/main.js"></script>
+                <p>The sample database provided alongside my coursework, though, doesn't necessarily include all of these filters at every stage, as I started crawling pages long before I finished writing the code. Fortunately, you can configure your own crawl, starting with anyone in the IMDB, should you so desire.</p>
+
+                <p>The crawling process took a little over a month on a domestic high-speed fibre broadband connection, during which time around 2,000,000 pages were requested. A repeat run on an equivalent connection would, most likely, take much less time thanks to later optimizations:
+                    <ul>
+                        <li>The HTTP requesting code has been optimised somewhat by using ByteStrings</li>
+                        <li>The crawler has been reconfigured to detect the number of available cores and run on all of them simultaneously</li>
+                    </ul>
+                </p>
+                
+                <p>In total, four different page types required crawling:
+                    <ul>
+                        <li>Actor pages (e.g. <a href="http://www.imdb.com/name/nm0000102/">Kevin Bacon</a>) from which we extract individual filmographies</li>
+                        <li>Film summary pages (e.g. <a href="http://www.imdb.com/title/tt0099582/">Flatliners</a>) to identify and exclude adult films</li>
+                        <li>Film full credits pages (e.g. <a href="http://www.imdb.com/title/tt0100814/fullcredits">Tremors</a>) to identify all credited cast members</li>
+                        <li>Search results pages (e.g. <a href="http://www.imdb.com/find?s=nm&exact=true&q=Kevin%20Bacon">Kevin Bacon</a>) for initializing a new database, or for searching on this web page</li>
+                    </ul>
+                </p>
+
+                <p>And so, with no further ado, why not <a href="query.html">query</a> the database?</p>
+            </div>
+        </div> <!-- /container -->
     </body>
 </html>

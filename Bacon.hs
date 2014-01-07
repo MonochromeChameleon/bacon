@@ -38,6 +38,7 @@ main = do
         ["server"] -> runServer
         _ -> syntaxError
 
+
 -- | For unrecognized commands, we print a helpful message instead.
 syntaxError :: IO()
 syntaxError = putStrLn 

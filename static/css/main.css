@@ -1,22 +1,40 @@
+input[type='search'] {
+    width: 300px;
+}
 
+.searchResults,
+.baconResult {
+    margin-top: 20px;
+}
 
-/* ==========================================================================
-   Author's custom styles
-   ========================================================================== */
+.searchResult {
+    cursor: pointer;
+    color: #428bca;
+    text-decoration: none;
+}
 
+.searchResult:hover,
+.searchResult:focus {
+    color: #2a6496;
+    text-decoration: underline;
+}
 
+.searchResult:focus {
+    outline: thin dotted #333;
+    outline: 5px auto -webkit-focus-ring-color;
+    outline-offset: -2px;
+}
 
+.baconNumber {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
 
+.film {
+    font-style: italic;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
+.actor {
+    font-weight: bold;
+}

@@ -27,10 +27,11 @@ getBaconResult_ bc imdbId conn = do
 -- | Converts the SQL response to a JSON actor
 convertActor :: [SqlValue] -> JSValue
 convertActor [] = JSObject $ toJSObject []
-convertActor sqlValues = JSObject $ toJSObject [jsid, jsname, jsfilm]
+convertActor sqlValues = JSObject $ toJSObject [jsid, jsname, jsbacon, jsfilm]
     where jsid = ("imdbId", showJSON ((fromSql $ sqlValues!!0)::String))
           jsname = ("name", showJSON ((fromSql $ sqlValues!!1)::String))
-          jsfilm = ("film", convertFilm $ drop 2 sqlValues)
+          jsbacon = ("bacon", showJSON ((fromSql $ sqlValues!!2)::String))
+          jsfilm = ("film", convertFilm $ drop 3 sqlValues)
           
 
 -- | Converts the SQL response to a JSON film
@@ -45,15 +46,15 @@ convertFilm sqlValues = JSObject $ toJSObject [jsid, jstitle, jsyear, jsactor]
 
 -- | Constructs our (surprisingly convoluted) query according to the desired degree of bacon
 buildQuery :: Bacon -> String
-buildQuery bc = (selectPart bc) ++ (fromPart bc) ++ (joinPart bc) ++ " where a0.bacon = 0 and a" ++ (show bc) ++ ".actor_id = ?"
+buildQuery bc = "select " ++ (selectPart bc) ++ (fromPart bc) ++ (joinPart bc) ++ " where a0.bacon = 0 and a" ++ (show bc) ++ ".actor_id = ?"
 
 
 -- | Build up the select part of our query
 selectPart :: Bacon -> String
-selectPart 0 = "select a0.actor_id, a0.name"
-selectPart bc = (selectPart $ bc - 1) ++ ", " ++ filmSelect ++ ", " ++ actorSelect
+selectPart 0 = "a0.actor_id, a0.name, a0.bacon"
+selectPart bc = actorSelect ++ ", " ++ filmSelect ++ ", " ++ (selectPart $ bc - 1)
     where filmSelect = "f" ++ bcf ++ ".film_id, f" ++ bcf ++ ".title, f" ++ bcf ++ ".year"
-          actorSelect = "a" ++ bca ++ ".actor_id, a" ++ bca ++ ".name"
+          actorSelect = "a" ++ bca ++ ".actor_id, a" ++ bca ++ ".name, a" ++ bca ++ ".bacon"
           bcf = show $ bc - 1
           bca = show bc
 
