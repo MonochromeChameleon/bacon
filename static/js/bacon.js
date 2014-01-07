@@ -6,20 +6,26 @@ define(['jquery', 'ko'], function ($, ko) {
     var degreesUrl = '/degrees';
     
     function handleSearchResponse(results) {
+        if (results.length == 1) {
+            selectResult(results[0]);
+            return;
+        }
         if (results.length == 0) {
             viewModel.searchError(true);
-        } else if (results.length > 1) {
-            viewModel.searchResults(results);
         } else {
-            selectResult(results[0]);
+            viewModel.searchResults(results);
         }
+
+        viewModel.loading(false);
     }
     
     function handleSearchError() {
         viewModel.searchError(true);
+        viewModel.loading(false);
     }
     
     function runSearch() {
+        viewModel.loading(true);
         var searchTerm = viewModel.textSearch();
         viewModel.baconResult(undefined);
         viewModel.baconError(false);
@@ -34,17 +40,23 @@ define(['jquery', 'ko'], function ($, ko) {
         });
     }
     
+    function handleBaconResult(result) {
+        viewModel.loading(false);    
+        viewModel.baconResult(result);
+    }
+    
     function handleBaconError() {
         viewModel.baconError(true);
     }
     
     function selectResult(actor) {
+        viewModel.loading(true);
         var url = degreesUrl + '/' + actor.imdbId;
         viewModel.searchResults([]);
         $.ajax({
             dataType: "json",
             url: url,
-            success: viewModel.baconResult,
+            success: handleBaconResult,
             error: handleBaconError
         });
     }
@@ -56,7 +68,8 @@ define(['jquery', 'ko'], function ($, ko) {
         selectResult: selectResult,
         baconResult: ko.observable(),
         baconError: ko.observable(false),
-        searchError: ko.observable(false)
+        searchError: ko.observable(false),
+        loading: ko.observable(false)
     }
 
 

@@ -58,6 +58,9 @@
                 </fieldset>
             </form>
             <div style="display: none" data-bind="visible: true"><!-- Avoid FOUC -->
+                <!-- ko if: loading -->
+                    <div class="loading">Loading</div>
+                <!-- /ko -->
                 <!-- ko if: searchResults().length -->
                 <div class="searchResults" />
                     <p>Did you mean</p>
