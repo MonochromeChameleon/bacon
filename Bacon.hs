@@ -27,9 +27,11 @@ main = do
             seedActor <- runSearch
             case seedActor of
                 Just actor -> do
-                    addConfig actor
-                    createDB
-                    seed actor
+                    isNew <- addConfig actor
+                    if isNew then do
+                        createDB
+                        seed actor
+                    else return ()
                 _ -> return ()
         ["crawl", maxBacon] -> crawl (read maxBacon::Int)
         ["configure"] -> switchConfig
@@ -41,5 +43,6 @@ syntaxError :: IO()
 syntaxError = putStrLn 
   "Usage: bacon [args]\n\
   \initialize       Create and seed a database\n\
-  \crawl [int]        Crawl from your seed reference to the specified level of connection\n\
-  \configure        Switch between available configurations"
+  \crawl [int]      Crawl from your seed reference to the specified level of connection\n\
+  \configure        Switch between available configurations\n\
+  \server           Start the Bacon application on http://localhost:8000/"

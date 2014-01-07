@@ -24,13 +24,22 @@ switchConfig = do
     doSwitchConfig conf availableOptions
 
 
--- | Add a new base configuration to the config file and set that base as the current config.
-addConfig :: Actor -> IO()
+-- | Add a new base configuration to the config file and set that base as the current config, first checking for duplicates.
+addConfig :: Actor -> IO Bool
 addConfig actor = do
     currentConf <- getConfig
-    let newInstance = Instance { dbname = (imdbid actor) ++ ".db", seed_ = actor }
-    let newConf = doAddConfig currentConf newInstance
-    writeConfig newConf
+    let inst = getConfigInstance currentConf $ imdbid actor 
+    case inst of
+        Just i -> do
+            putStrLn "Actor already exists in config - setting as current"
+            writeConfig $ doSetConfig currentConf i
+            return False
+        _ -> do
+            let newInstance = Instance { dbname = (imdbid actor) ++ ".db", seed_ = actor }
+            let newConf = doAddConfig currentConf newInstance
+            writeConfig newConf
+            putStrLn "New config added"
+            return True
     
 
 -- | Returns the name of the currently-configured database file
@@ -53,7 +62,14 @@ data ConfigState = ConfigState { current :: Maybe Instance,
 -- | Record for a configuration instance
 data Instance = Instance { dbname :: String,
                            seed_ :: Actor } deriving (Eq, Show, Read)
+                           
 
+-- | Looks up a config instance by the associated imdb id
+getConfigInstance :: ConfigState -> ImdbID -> Maybe Instance
+getConfigInstance conf imdbId = if isConfigured then Just $ instances!!0 else Nothing
+    where isConfigured = (length $ instances) > 0
+          instances = filter (\c -> (imdbid $ seed_ c) == imdbId) $ options conf
+                           
 
 -- | Switches the current database to the desired instance
 doSwitchConfig :: ConfigState -> [Instance] -> IO ()
