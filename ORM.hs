@@ -38,65 +38,68 @@ class Eq a => Entity a where
         return ()
 
 
+-- ======================== --
+-- EXCESSIVE GENERICISATION --
+-- ======================== --
 
-getEntityType :: String -> EntityType
-getEntityType id = case substring of
-    "nm" -> ActorType
-    _ -> FilmType
-    where substring = take 2 id
+-- Below this point, we have (in effect) an enum to define the persistence properties of our two main classes
 
 data EntityType = ActorType | FilmType deriving (Eq,Show)
 
+
+-- | Typeclass to define the properties we need on the entity type data type as used by the entity typeclass.
+-- | That sentence is convoluted enough to make me think I went too far, but I'm not going back now...
 class EntityTypeDef t where
+    -- Persistence properties and utilities
     tableName :: t -> String
     idColumnName :: t -> String
     idColumnName entityType = (tableName entityType) ++ "_id"
     columnNames :: t -> [String]
     allColumns :: t -> String
+    allColumns et = intercalate "," $ columnNames et
     
-    -- Returns the appropriate SQL query to save a new instance of this Entity
+
+    -- | Returns the appropriate SQL query to save a new instance of this Entity
     saveQuery :: t -> String
     saveQuery entityType = "INSERT INTO " ++ (tableName entityType) ++ " (" ++ (allColumns entityType) ++ ") VALUES (" ++ (parametrize $ columnNames entityType) ++ ")"
     
-
-
-instance EntityTypeDef EntityType where
     
+    -- | Builds the appropriate SQL query to update the processed flag on an entity
+    updateQuery :: t -> String
+    updateQuery et = "UPDATE " ++ (tableName et) ++ " SET processed = ? WHERE " ++ (idColumnName et) ++ " = ?"
+    
+
+-- | Make EntityType an instance of the EntityTypeDef TypeClass. See? SEE? It's ridiculous...
+instance EntityTypeDef EntityType where    
     tableName et = case (et) of
         ActorType -> "actor"
         _ -> "film"
     columnNames et = case (et) of
         ActorType -> ["actor_id", "name", "bacon"]
         _ -> ["film_id", "title", "year", "bacon"]
-    allColumns et = intercalate "," $ columnNames et
-    
+
 
 ---------------------
 -- Utility Methods --
 ---------------------
 
 
--- Saves a batch of new entities to the database    
+-- | Saves a batch of new entities to the database    
 saveMany :: Entity a => IConnection c => c -> [a] -> IO ()
 saveMany conn as | length as == 0 = return ()
                  | otherwise = do
-    stmt <- prepare conn (getSaveQuery as)
+    stmt <- prepare conn (saveQuery $ entityType $ head as)
     executeMany stmt (map asSql as)
               
-getSaveQuery :: Entity a => [a] -> String
-getSaveQuery (a:as) = saveQuery $ entityType a
 
-getUpdateQuery :: Entity a => [a] -> String
-getUpdateQuery (a:as) = "UPDATE " ++ (tableName et) ++ " SET processed = ? WHERE " ++ (idColumnName et) ++ " = ?"
-    where et = entityType a
-
--- Updates the given entity to set its "processed" flag as true.
+-- | Updates the given entity to set its "processed" flag as true.
 processed :: Entity a => IConnection c => c -> a -> IO Integer
 processed conn a = run conn queryAsString [toSql True, toSql $ imdbid a]
-    where queryAsString = getUpdateQuery [a]
+    where queryAsString = updateQuery $ entityType a
     
--- For a given list of ids, returns the unique list of those IDs that are not already
--- present in the database.
+    
+-- | For a given list of ids, returns the unique list of those IDs that are not already
+-- | present in the database.
 findNew :: Entity a => IConnection c => c -> [a] -> IO [a]
 findNew conn as | length as == 0 = return []
                 | otherwise = do
@@ -116,8 +119,9 @@ findNew conn as | length as == 0 = return []
     where et = entityType $ head as
 
     
--- Creates a link between this entity and a group of other entities. This relies on the assumption
--- that the single entity will of one type, while the list will be of the other type.
+-- | Creates a link between this entity and a group of other entities. This relies on the assumption
+-- | that the single entity will of one type, while the list will be of the other type. Which it will
+-- | be, unless something truly insane is going on.
 connect :: Entity a => Entity b => IConnection c => c -> a -> [b] -> IO()
 connect conn a bs | length bs == 0 = return ()
                   | otherwise = do
