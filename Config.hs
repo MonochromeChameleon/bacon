@@ -4,6 +4,7 @@ import System.IO
 
 import DataModel
 import ORM
+import Prompt
 
 -- | Constant name for the config file§
 configFile :: String
@@ -20,7 +21,7 @@ switchConfig :: IO ()
 switchConfig = do
     conf <- getConfig
     let availableOptions = options conf
-    doSwitchConfig availableOptions
+    doSwitchConfig conf availableOptions
 
 
 -- | Add a new base configuration to the config file and set that base as the current config.
@@ -54,16 +55,32 @@ data Instance = Instance { dbname :: String,
                            seed_ :: Actor } deriving (Eq, Show, Read)
 
 
-doSwitchConfig :: [Instance] -> IO ()
-doSwitchConfig [] = putStrLn "No instances are currently configured - please add a new config base first"
-doSwitchConfig (inst:[]) = putStrLn "Only one instance is currently configured - nothing to switch. You can add new config though."
-doSwitchConfig instances = do
-    return () --QQ
+-- | Switches the current database to the desired instance
+doSwitchConfig :: ConfigState -> [Instance] -> IO ()
+doSwitchConfig _ [] = putStrLn "No instances are currently configured - please add a new config base first"
+doSwitchConfig _ (inst:[]) = putStrLn "Only one instance is currently configured - nothing to switch. You can add new config though."
+doSwitchConfig conf instances = do
+    response <- multilinePrompt "" $ 
+        ["You have " ++ (show $ length instances) ++ " configurations available:", ""] ++ 
+        (listNames $ map seed_ instances) ++ 
+        ["", "Who do you want to switch to? " ++ (show [1..(length instances)]), "(press any other key to cancel)"]
+        
+    if ((length $ filter (== response) (map show [1..(length instances)])) > 0) then do
+        let newConf = doSetConfig conf (instances!!((read response::Int) - 1))
+        writeConfig newConf
+        putStrLn "Updated"
+    else do
+        putStrLn "No changes made"
 
 
--- | Creates a new config state with the new instance as the current option
+-- | Creates a new config state with the new instance as the current option, and added to the existing available options
 doAddConfig :: ConfigState -> Instance -> ConfigState
 doAddConfig currentConf newInstance = ConfigState { current = Just newInstance, options = (newInstance:(options currentConf)) }
+
+
+-- | Creates a new config state with the desired instance as the current option, leaving options unchanged
+doSetConfig :: ConfigState -> Instance -> ConfigState
+doSetConfig currentConf selectedInstance = ConfigState { current = Just selectedInstance, options = (options currentConf) }
 
 
 -- | Writes a config state back to the conf file

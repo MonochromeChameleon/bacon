@@ -54,13 +54,3 @@ selectActor actors = do
         putStrLn "No changes made"
         return Nothing
 
-
--- Build a numbered list of people - calls through to listNamesRec
-listNames :: [Actor] -> [String]
-listNames = listNamesRec 0 -- Call through to the recursive function with index 0
-
--- Recursive implementation of the listNames function
-listNamesRec :: Integer -> [Actor] -> [String]
-listNamesRec _ [] = []
-listNamesRec ix (actor:actors) = ((show (ix + 1)) ++ ": " ++ (name actor)):listNamesRec (ix + 1) actors
-    
