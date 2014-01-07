@@ -3,8 +3,15 @@ input[type='search'] {
 }
 
 .searchResults,
-.baconResult {
+.baconResult,
+.baconError {
     margin-top: 20px;
+}
+
+.broken {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-top: 5px;
 }
 
 .searchResult {

@@ -66,6 +66,11 @@
                     <!-- /ko -->
                 </div>
                 <!-- /ko -->
+                <!-- ko if: searchError -->
+                <div class="baconError">
+                    No search results found - it could be a server error, or else try another search term
+                </div>
+                <!-- /ko -->
                 <!-- ko if: baconResult -->
                 <div class="baconResult">
                     <div class="baconNumber">
@@ -74,6 +79,12 @@
                     </div>
                     <div data-bind="template: { name: 'actorTemplate', data: baconResult }"></div>
                 </div>
+                <!-- /ko -->
+                <!-- ko if: baconError -->
+                    <div class="baconError">
+                        <span class="actor" data-bind="text: textSearch"></span> is not in the database
+                        <p class="broken">You have broken the bacon!!!</p>
+                    </div>
                 <!-- /ko -->
             </div>
         </div> <!-- /container -->
