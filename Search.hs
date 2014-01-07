@@ -24,24 +24,29 @@ runSearch :: IO (Maybe Actor)
 runSearch = do
     actorName <- prompt "Who do you want to start with?"
     actors <- searchResults actorName
-    selectActor actors
+    selectedActorIndex <- selectActor $ fst actors
+    case selectedActorIndex of
+        Just ix -> do
+            let actor = (snd actors)!!ix
+            return $ Just actor
+        _ -> return Nothing
     
 
 -- | Fetch and parse search results
-searchResults :: String -> IO [Actor]
+searchResults :: String -> IO ([Actor], [Actor])
 searchResults actorName = do
     searchResultsPage <- downloadURL $ searchUrl actorName
-    return $ parseSearchResults searchResultsPage
+    return (parseSearchResults searchResultsPage, cleanedSearchResults searchResultsPage)
 
 
 -- | Command-prompt handler for selecting one from several matching results, if appropriate.
-selectActor :: [Actor] -> IO (Maybe Actor)
+selectActor :: [Actor] -> IO (Maybe Int)
 selectActor [] = do
     putStrLn "No matching results"
     return Nothing
 selectActor (actor:[]) = do
     putStrLn $ "One result found: " ++ (name actor)
-    return (Just actor)
+    return (Just 0)
 selectActor actors = do
     response <- multilinePrompt "" $ 
         ["We found " ++ (show $ length actors) ++ " matching entries:", ""] ++ 
@@ -49,7 +54,7 @@ selectActor actors = do
         ["", "Who do you want to seed your database with? " ++ (show [1..(length actors)]), "(press any other key to cancel)"]
         
     if ((length $ filter (== response) (map show [1..(length actors)])) > 0) then 
-        return $ Just (actors!!((read response::Int) - 1))
+        return $ Just ((read response::Int) - 1)
     else do
         putStrLn "No changes made"
         return Nothing

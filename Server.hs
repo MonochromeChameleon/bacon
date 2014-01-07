@@ -37,7 +37,7 @@ getDegrees q = do
 doSearch :: String -> ServerPart Response
 doSearch q = do
     actors <- liftIO $ searchResults q
-    let json = encode $ map showJSON actors
+    let json = encode $ map showJSON $ fst actors
     let html = toHtml $ json
     ok $ toResponse html
 

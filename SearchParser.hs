@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-module SearchParser(parseSearchResults) where
+module SearchParser(parseSearchResults, cleanedSearchResults) where
 
 import Data.List
 import Text.HTML.TagSoup
@@ -15,14 +15,21 @@ parseSearchResults :: String -> [Actor]
 parseSearchResults = processHTML SearchParser 0
 
 
+-- | Same as parseSearchResults, but with cleaned up names
+cleanedSearchResults :: String -> [Actor]
+cleanedSearchResults = processHTML SearchParser 1
+
+
 -- Private methods
 
 -- | Extracts the Actor details from a list of tags corresponding to a single row in our HTML page
+-- | The bacon number passed in here is actually a boolean flag, which is hacky as hell, but it 
+-- | does what we want.
 doParseRow :: Bacon -> [Tag String] -> Actor
-doParseRow _ tags = Actor { name = nm, actor_details = details }
+doParseRow bc tags = Actor { name = nm, actor_details = details }
     where tagsOfInterest = dropWhile notLink $ dropWhile notSearchResultCell tags -- Drop everything up to the hyperlink
           url = getLink $ tagsOfInterest!!0     -- URL comes first
-          nm = getAllContent $ tagsOfInterest
+          nm = if bc == 0 then getAllContent tagsOfInterest else getContent $ tagsOfInterest!!1
           imdbid = takeWhile (\x -> x /= '/') $ drop 6 url
           details = IMDBDetails { imdbId = imdbid, baconNumber = 0 }
 
