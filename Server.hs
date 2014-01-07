@@ -1,85 +1,47 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 module Server where
 
-import Control.Applicative ((<$>), optional)
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import Data.Text.Lazy (unpack)
+import Control.Monad.IO.Class
 import Happstack.Lite
 import Text.Blaze.Html5 (Html, (!), a, form, input, p, toHtml, label)
-import Text.Blaze.Html5.Attributes (action, enctype, href, name, size, type_, value)
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import Text.JSON
 
+import BaconDB
+import BaconResult
+import DataModel
+import JSON
+import Search
+
+-- | Starts our HTTP server
 runServer :: IO ()
-runServer = serve Nothing baconApp
+runServer = do
+    putStrLn "Open up a browser and go to http://localhost:8000"
+    serve Nothing baconApp
 
+
+-- | Basic routing configuration
 baconApp :: ServerPart Response
-baconApp = msum
-   [ dir "echo"    $ echo
-   , dir "query"   $ queryParams
-   , dir "form"    $ formPage
-   , dir "files"   $ fileServing
-   , homePage
-   ]
-   
-   
-template :: Text -> Html -> Response
-template title body = toResponse $
-    H.html $ do
-    H.head $ do
-      H.title (toHtml title)
-    H.body $ do
-      body
-      p $ a ! href "/" $ "back home"
-      
-      
-homePage :: ServerPart Response
-homePage =
-    ok $ template "home page" $ do
-           H.h1 "Hello!"
-           H.p "Writing applications with happstack-lite is fast and simple!"
-           H.p "Check out these killer apps."
-           H.p $ a ! href "/echo/secret%20message"  $ "echo"
-           H.p $ a ! href "/query?foo=bar" $ "query parameters"
-           H.p $ a ! href "/form"          $ "form processing"
-           H.p $ a ! href "/files"         $ "file serving"
-           
-echo :: ServerPart Response
-echo =
-    path $ \(msg :: String) ->
-        ok $ template "echo" $ do
-          p $ "echo says: " >> toHtml msg
-          p "Change the url to echo something else."
+baconApp = msum [dir "degrees" $ path $ \q -> getDegrees q, dir "search"  $ path $ \q -> doSearch q, fileServing]
 
 
-queryParams :: ServerPart Response
-queryParams =
-    do mFoo <- optional $ lookText "foo"
-       ok $ template "query params" $ do
-         p $ "foo is set to: " >> toHtml (show mFoo)
-         p $ "change the url to set it to something else."          
+-- | Looks up the degrees of kevin bacon for the given imdb id, retuning a JSON tree
+getDegrees :: String -> ServerPart Response
+getDegrees q = do
+    result <- liftIO $ getBaconResult q
+    let json = encode $ showJSON result
+    let html = toHtml $ json
+    ok $ toResponse html
+    
 
-formPage :: ServerPart Response
-formPage = msum [ viewForm, processForm ]
-  where
-    viewForm :: ServerPart Response
-    viewForm =
-        do method GET
-           ok $ template "form" $
-              form ! action "/form" ! enctype "multipart/form-data" ! A.method "POST" $ do
-                label ! A.for "msg" $ "Say something clever"
-                input ! type_ "text" ! A.id "msg" ! name "msg"
-                input ! type_ "submit" ! value "Say it!"
+-- | Query the IMDB search page and return the results as a JSON array
+doSearch :: String -> ServerPart Response
+doSearch q = do
+    actors <- liftIO $ searchResults q
+    let json = encode $ map showJSON actors
+    let html = toHtml $ json
+    ok $ toResponse html
 
-    processForm :: ServerPart Response
-    processForm =
-        do method POST
-           msg <- lookText "msg"
-           ok $ template "form" $ do
-             H.p "You said:"
-             H.p (toHtml msg)
 
+-- | Serve the static directory
 fileServing :: ServerPart Response
-fileServing =
-    serveDirectory EnableBrowsing ["index.html"] "./static"
+fileServing = serveDirectory EnableBrowsing ["index.html"] "./static"

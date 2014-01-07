@@ -1,4 +1,4 @@
-module BaconDB (createDB, seed, loadEntitiesWithBacon, storeProcessingResult, delete) where
+module BaconDB (createDB, seed, loadEntitiesWithBacon, storeProcessingResult, delete, lookupActor, lookupFilm) where
 
 import Database.HDBC
 
@@ -53,4 +53,23 @@ delete_ e conn = do
     run conn ("DELETE FROM actor_film WHERE " ++ (idColumnName et) ++ " = ?") [toSql $ imdbid e]
     return ()
     where et = entityType e
+
+lookupActor :: ImdbID -> IO Actor
+lookupActor imdbId = lookupEntity ActorType imdbId
+
+lookupFilm :: ImdbID -> IO Film
+lookupFilm imdbId = lookupEntity FilmType imdbId
+
+
+-- | Lookup an entity by imdb id
+lookupEntity :: Entity e => EntityType -> ImdbID -> IO e
+lookupEntity et imdbId = withConnection $ lookup_ et imdbId
+
+
+-- | Internal function called via DatabaseConnector.withConnection to lookup entities
+lookup_ :: Entity e => IConnection c => EntityType -> ImdbID -> c -> IO e
+lookup_ et imdbId conn = do
+    let query = "SELECT " ++ (allColumns et) ++ " FROM " ++ (tableName et) ++ " WHERE " ++ (idColumnName et) ++ " = ?"
+    res <- quickQuery' conn query [toSql imdbId]
+    return $ readSql $ res!!0
 

@@ -3,20 +3,25 @@ module DataModel where
 import ORM
 import Database.HDBC
 
+-- | Shared details that are present for both actors and films
 data IMDBDetails = IMDBDetails { imdbId :: ImdbID, baconNumber :: Bacon } deriving (Eq, Show, Read)
 
+-- | Actor-specific fields
 data Actor = Actor { name :: Name
                    , actor_details :: IMDBDetails } deriving (Eq, Show, Read)
                    
+-- | Film-specific fields
 data Film = Film { title :: Name
                  , year :: Year
                  , film_details :: IMDBDetails } deriving (Eq, Show)
                  
+-- | Handy aliases
 type ImdbID = String
 type Name = String
 type Year = Int
 type Bacon = Int
 
+-- Make our two main classes instances of the Entity typeclass, defining all of the ORM necessaries
 
 instance Entity Actor where
     entityType _ = ActorType

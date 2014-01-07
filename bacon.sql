@@ -19,3 +19,8 @@ CREATE TABLE actor_film (
     FOREIGN KEY (actor_id) REFERENCES actor(actor_id),
     FOREIGN KEY (film_id) REFERENCES film(film_id)
 );
+
+create index ix_a_id ON actor (actor_id);
+create index ix_f_id ON film (film_id);
+create index ix_af_a_id ON actor_film (actor_id);
+create index ix_af_f_id ON actor_film (film_id);

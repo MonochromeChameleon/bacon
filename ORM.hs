@@ -39,6 +39,12 @@ class Eq a => Entity a where
 
 
 
+getEntityType :: String -> EntityType
+getEntityType id = case substring of
+    "nm" -> ActorType
+    _ -> FilmType
+    where substring = take 2 id
+
 data EntityType = ActorType | FilmType deriving (Eq,Show)
 
 class EntityTypeDef t where
